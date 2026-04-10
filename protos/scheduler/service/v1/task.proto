@@ -1,0 +1,298 @@
+syntax = "proto3";
+
+package scheduler.service.v1;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/field_mask.proto";
+
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/go-tangra/go-tangra-scheduler/gen/go/scheduler/service/v1;schedulerpb";
+
+// Scheduled Task Management Service
+service SchedulerTaskService {
+  // Query scheduled task list
+  rpc ListTasks (ListTasksRequest) returns (ListTasksResponse) {
+    option (google.api.http) = {
+      get: "/v1/tasks"
+    };
+  }
+
+  // Query scheduled task details
+  rpc GetTask (GetTaskRequest) returns (Task) {
+    option (google.api.http) = {
+      get: "/v1/tasks/{id}"
+      additional_bindings {
+        get: "/v1/tasks/type-name/{type_name}"
+      }
+    };
+  }
+
+  // Create scheduled task
+  rpc CreateTask (CreateTaskRequest) returns (Task) {
+    option (google.api.http) = {
+      post: "/v1/tasks"
+      body: "*"
+    };
+  }
+
+  // Update scheduled task
+  rpc UpdateTask (UpdateTaskRequest) returns (Task) {
+    option (google.api.http) = {
+      put: "/v1/tasks/{id}"
+      body: "*"
+    };
+  }
+
+  // Delete scheduled task
+  rpc DeleteTask (DeleteTaskRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/tasks/{id}"
+    };
+  }
+
+  // List registered task type names
+  rpc ListTaskTypeNames (google.protobuf.Empty) returns (ListTaskTypeNamesResponse) {
+    option (google.api.http) = {
+      get: "/v1/tasks:type-names"
+    };
+  }
+
+  // Restart all scheduled tasks
+  rpc RestartAllTasks (google.protobuf.Empty) returns (RestartAllTasksResponse) {
+    option (google.api.http) = {
+      post: "/v1/tasks:restart"
+      body: "*"
+    };
+  }
+
+  // Start all scheduled tasks
+  rpc StartAllTasks (google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/tasks:start"
+      body: "*"
+    };
+  }
+
+  // Stop all scheduled tasks
+  rpc StopAllTasks (google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/tasks:stop"
+      body: "*"
+    };
+  }
+
+  // Control a specific scheduled task (start/stop/restart)
+  rpc ControlTask (ControlTaskRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/tasks:control"
+      body: "*"
+    };
+  }
+
+  // List execution history for a task
+  rpc ListTaskExecutions (ListTaskExecutionsRequest) returns (ListTaskExecutionsResponse) {
+    option (google.api.http) = {
+      get: "/v1/task-executions"
+    };
+  }
+}
+
+// Task Execution record
+message TaskExecution {
+  string execution_id = 1 [json_name = "executionId"];
+  string task_type = 2 [json_name = "taskType"];
+  string module_id = 3 [json_name = "moduleId"];
+  string status = 4 [json_name = "status"];
+  optional string message = 5 [json_name = "message"];
+  int32 attempt = 6 [json_name = "attempt"];
+  int64 duration_ms = 7 [json_name = "durationMs"];
+  google.protobuf.Timestamp started_at = 8 [json_name = "startedAt"];
+  optional google.protobuf.Timestamp finished_at = 9 [json_name = "finishedAt"];
+}
+
+// List Task Executions - Request
+message ListTaskExecutionsRequest {
+  string task_type = 1 [json_name = "taskType"];
+  optional int32 page = 2 [json_name = "page"];
+  optional int32 page_size = 3 [json_name = "pageSize"];
+}
+
+// List Task Executions - Response
+message ListTaskExecutionsResponse {
+  repeated TaskExecution items = 1;
+  int32 total = 2;
+}
+
+// Task Options
+message TaskOption {
+  optional uint32 max_retry = 1 [
+    json_name = "maxRetry",
+    (google.api.field_behavior) = OPTIONAL
+  ];
+
+  optional google.protobuf.Duration timeout = 2 [
+    json_name = "timeout",
+    (google.api.field_behavior) = OPTIONAL
+  ];
+
+  optional google.protobuf.Timestamp deadline = 3 [
+    json_name = "deadline",
+    (google.api.field_behavior) = OPTIONAL
+  ];
+
+  optional google.protobuf.Duration process_in = 4 [
+    json_name = "processIn",
+    (google.api.field_behavior) = OPTIONAL
+  ];
+
+  optional google.protobuf.Timestamp process_at = 5 [
+    json_name = "processAt",
+    (google.api.field_behavior) = OPTIONAL
+  ];
+
+  optional google.protobuf.Duration unique_ttl = 6 [
+    json_name = "uniqueTTL",
+    (google.api.field_behavior) = OPTIONAL
+  ];
+
+  optional google.protobuf.Duration retention = 7 [
+    json_name = "retention",
+    (google.api.field_behavior) = OPTIONAL
+  ];
+
+  optional string group = 8 [
+    json_name = "group",
+    (google.api.field_behavior) = OPTIONAL
+  ];
+
+  optional string task_id = 9 [
+    json_name = "taskID",
+    (google.api.field_behavior) = OPTIONAL
+  ];
+}
+
+// Scheduled Task
+message Task {
+  // Scheduled Task Type
+  enum Type {
+    PERIODIC = 0;
+    DELAY = 1;
+    WAIT_RESULT = 2;
+  }
+
+  optional uint32 id = 1 [json_name = "id"];
+  optional Type type = 2 [json_name = "type"];
+
+  optional string type_name = 3 [
+    json_name = "typeName",
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  optional string task_payload = 4 [json_name = "taskPayload"];
+
+  optional string cron_spec = 5 [
+    json_name = "cronSpec",
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  optional TaskOption task_options = 6 [json_name = "taskOptions"];
+
+  // Module ID that owns this task type (set automatically from task type registry).
+  optional string module_id = 7 [json_name = "moduleId"];
+
+  optional bool enable = 10 [json_name = "enable"];
+  optional string remark = 11 [json_name = "remark"];
+
+  // Execution tracking (set by scheduler after each run)
+  optional google.protobuf.Timestamp last_run_at = 12 [json_name = "lastRunAt"];
+  optional string last_run_status = 13 [json_name = "lastRunStatus"];       // "success", "failed", "running"
+  optional string last_run_message = 14 [json_name = "lastRunMessage"];
+  optional int32 run_count = 15 [json_name = "runCount"];
+
+  optional uint32 tenant_id = 20 [json_name = "tenantId"];
+
+  optional uint32 created_by = 100 [json_name = "createdBy"];
+  optional uint32 updated_by = 101 [json_name = "updatedBy"];
+  optional uint32 deleted_by = 102 [json_name = "deletedBy"];
+
+  optional google.protobuf.Timestamp created_at = 200 [json_name = "createdAt"];
+  optional google.protobuf.Timestamp updated_at = 201 [json_name = "updatedAt"];
+  optional google.protobuf.Timestamp deleted_at = 202 [json_name = "deletedAt"];
+}
+
+// List Tasks - Request
+message ListTasksRequest {
+  optional int32 page = 1 [json_name = "page"];
+  optional int32 page_size = 2 [json_name = "pageSize"];
+  optional string order_by = 3 [json_name = "orderBy"];
+  optional bool no_paging = 4 [json_name = "noPaging"];
+  map<string, string> filter = 5 [json_name = "filter"];
+  optional google.protobuf.FieldMask field_mask = 6 [json_name = "fieldMask"];
+}
+
+// List Tasks - Response
+message ListTasksResponse {
+  repeated Task items = 1;
+  uint64 total = 2;
+}
+
+// Get Task - Request
+message GetTaskRequest {
+  oneof query_by {
+    uint32 id = 1 [json_name = "id"];
+    string type_name = 2 [json_name = "typeName"];
+  }
+
+  optional google.protobuf.FieldMask view_mask = 100 [json_name = "viewMask"];
+}
+
+// Create Task - Request
+message CreateTaskRequest {
+  Task data = 1 [(buf.validate.field).required = true];
+}
+
+// Update Task - Request
+message UpdateTaskRequest {
+  uint32 id = 1 [(buf.validate.field).uint32.gt = 0];
+  Task data = 2 [(buf.validate.field).required = true];
+
+  google.protobuf.FieldMask update_mask = 3 [json_name = "updateMask"];
+  optional bool allow_missing = 4 [json_name = "allowMissing"];
+}
+
+// Delete Task - Request
+message DeleteTaskRequest {
+  uint32 id = 1 [(buf.validate.field).uint32.gt = 0];
+}
+
+// Restart All Tasks - Response
+message RestartAllTasksResponse {
+  int32 count = 1;
+}
+
+// Control Task - Request
+message ControlTaskRequest {
+  enum ControlType {
+    START = 0;
+    STOP = 1;
+    RESTART = 2;
+  }
+
+  ControlType control_type = 1 [json_name = "controlType"];
+
+  string type_name = 2 [
+    json_name = "typeName",
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// List Task Type Names - Response
+message ListTaskTypeNamesResponse {
+  repeated string type_names = 1 [json_name = "typeNames"];
+}

@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package scheduler.service.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "buf/validate/validate.proto";
+
+option go_package = "github.com/go-tangra/go-tangra-scheduler/gen/go/scheduler/service/v1;schedulerpb";
+
+// TaskTypeRegistrationService allows modules to register their executable
+// task types with the scheduler. Modules call this on startup to declare
+// which task types they can handle. The scheduler then calls back to the
+// module's TaskExecutorService when a task of that type fires.
+service TaskTypeRegistrationService {
+  // RegisterTaskTypes declares which task types a module can execute.
+  // Idempotent — re-registration overwrites previous entries for the same module.
+  rpc RegisterTaskTypes (RegisterTaskTypesRequest) returns (RegisterTaskTypesResponse) {
+    option (google.api.http) = {
+      post: "/v1/task-types:register"
+      body: "*"
+    };
+  }
+
+  // UnregisterTaskTypes removes all task types for a module (called on shutdown).
+  rpc UnregisterTaskTypes (UnregisterTaskTypesRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/v1/task-types:unregister"
+      body: "*"
+    };
+  }
+
+  // ListRegisteredTaskTypes returns all registered task types across all modules.
+  rpc ListRegisteredTaskTypes (google.protobuf.Empty) returns (ListRegisteredTaskTypesResponse) {
+    option (google.api.http) = {
+      get: "/v1/task-types"
+    };
+  }
+}
+
+// TaskTypeDescriptor describes a single executable task type.
+message TaskTypeDescriptor {
+  // Globally unique task type name. Convention: "{module_id}:{action}"
+  string task_type = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Human-readable display name for the UI.
+  string display_name = 2;
+
+  // Description of what this task does.
+  string description = 3;
+
+  // JSON Schema for the payload (optional, used for UI form generation).
+  string payload_schema = 4;
+
+  // Default cron expression suggestion.
+  string default_cron = 5;
+
+  // Default max retries.
+  int32 default_max_retry = 6;
+}
+
+// RegisterTaskTypesRequest is sent by a module to declare its task types.
+message RegisterTaskTypesRequest {
+  // Module ID of the calling module (e.g., "paperless", "deployer").
+  string module_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Task types this module can execute.
+  repeated TaskTypeDescriptor task_types = 2;
+}
+
+message RegisterTaskTypesResponse {
+  int32 registered_count = 1;
+  string message = 2;
+}
+
+message UnregisterTaskTypesRequest {
+  string module_id = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+message ListRegisteredTaskTypesResponse {
+  repeated RegisteredTaskType task_types = 1;
+}
+
+// RegisteredTaskType is a task type with its owning module info.
+message RegisteredTaskType {
+  string task_type = 1;
+  string module_id = 2;
+  string display_name = 3;
+  string description = 4;
+  string payload_schema = 5;
+  string default_cron = 6;
+  int32 default_max_retry = 7;
+}

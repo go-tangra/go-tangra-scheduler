@@ -1,0 +1,66 @@
+{
+  "menu": {
+    "scheduler": "Scheduler",
+    "tasks": "Tasks"
+  },
+  "page": {
+    "task": {
+      "title": "Scheduled Tasks",
+      "typeName": "Task Type",
+      "taskType": "Execution Type",
+      "cronSpec": "Cron Expression",
+      "enable": "Status",
+      "remark": "Remark",
+      "createdAt": "Created At",
+      "updatedAt": "Updated At",
+
+      "typePeriodic": "Periodic",
+      "typeDelay": "Delayed",
+      "typeWaitResult": "Wait Result",
+
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+
+      "create": "Create Task",
+      "edit": "Edit Task",
+      "view": "View Task",
+      "delete": "Delete Task",
+      "confirmDelete": "Are you sure you want to delete this task? It will be stopped if currently running.",
+      "deleteSuccess": "Task deleted successfully",
+      "createSuccess": "Task created successfully",
+      "updateSuccess": "Task updated successfully",
+
+      "start": "Start",
+      "stop": "Stop",
+      "restart": "Restart",
+      "startSuccess": "Task started",
+      "stopSuccess": "Task stopped",
+      "restartSuccess": "Task restarted",
+
+      "startAll": "Start All",
+      "stopAll": "Stop All",
+      "restartAll": "Restart All",
+      "startAllSuccess": "All tasks started",
+      "stopAllSuccess": "All tasks stopped",
+      "restartAllSuccess": "All tasks restarted ({count} tasks)",
+      "confirmStartAll": "Start all enabled tasks?",
+      "confirmStopAll": "Stop all running tasks?",
+      "confirmRestartAll": "Restart all tasks?",
+
+      "taskPayload": "Task Payload (JSON)",
+      "taskPayloadPlaceholder": "{\"key\": \"value\"}",
+      "cronSpecPlaceholder": "*/5 * * * * (every 5 minutes)",
+
+      "options": "Task Options",
+      "maxRetry": "Max Retries",
+      "timeout": "Timeout",
+      "deadline": "Deadline",
+      "processIn": "Process In",
+      "processAt": "Process At",
+      "uniqueTTL": "Unique TTL",
+      "retention": "Result Retention",
+      "group": "Group",
+      "taskID": "Task ID"
+    }
+  }
+}

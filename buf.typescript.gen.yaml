@@ -1,0 +1,20 @@
+version: v2
+
+clean: true
+
+managed:
+  enabled: true
+
+  disable:
+    - module: buf.build/googleapis/googleapis
+    - module: 'buf.build/bufbuild/protovalidate'
+    - module: 'buf.build/kratos/apis'
+
+inputs:
+  - directory: protos
+    paths:
+      - protos/scheduler/service/v1
+
+plugins:
+  - local: protoc-gen-typescript-http
+    out: frontend/src/generated/api

@@ -1,0 +1,81 @@
+# Scheduler Module Menu Definitions
+# Used by admin service for dynamic menu registration
+
+module:
+  id: scheduler
+  name: Scheduler
+  description: Distributed task scheduling with cron, delayed, and wait-result execution
+
+menus:
+  - id: scheduler
+    parent_id: null
+    type: CATALOG
+    name: Scheduler
+    path: /scheduler
+    icon: lucide:clock
+    order: 500
+    authority:
+      - platform:admin
+      - tenant:manager
+
+  - id: scheduler-tasks
+    parent_id: scheduler
+    type: MENU
+    name: Tasks
+    path: tasks
+    component: app/scheduler/tasks/index.vue
+    icon: lucide:list-checks
+    order: 1
+    authority:
+      - platform:admin
+      - tenant:manager
+
+permission_groups:
+  - name: Scheduler
+    module: scheduler
+    description: Scheduler Module Permissions
+    permissions:
+      - name: View Tasks
+        code: scheduler.task.view
+        description: View scheduled tasks list
+      - name: Create Tasks
+        code: scheduler.task.create
+        description: Create new scheduled tasks
+      - name: Update Tasks
+        code: scheduler.task.update
+        description: Update existing scheduled tasks
+      - name: Delete Tasks
+        code: scheduler.task.delete
+        description: Delete scheduled tasks
+      - name: Control Tasks
+        code: scheduler.task.control
+        description: Start, stop, or restart tasks
+
+roles:
+  - name: Scheduler Administrator
+    code: scheduler.admin
+    description: Full access to Scheduler module
+    is_system: true
+    permissions:
+      - scheduler.task.view
+      - scheduler.task.create
+      - scheduler.task.update
+      - scheduler.task.delete
+      - scheduler.task.control
+
+  - name: Scheduler Operator
+    code: scheduler.operator
+    description: Can manage and control tasks
+    is_system: true
+    permissions:
+      - scheduler.task.view
+      - scheduler.task.create
+      - scheduler.task.update
+      - scheduler.task.control
+
+  - name: Scheduler Viewer
+    code: scheduler.viewer
+    description: Read-only access to Scheduler module
+    is_system: true
+    permissions:
+      - scheduler.task.view
