@@ -2,111 +2,6 @@
 /* eslint-disable camelcase */
 // @ts-nocheck
 
-export type RestoreMode =
-  | "RESTORE_MODE_SKIP"
-  | "RESTORE_MODE_OVERWRITE";
-export type ExportBackupRequest = {
-  tenantId?: number;
-  includeSecrets: boolean | undefined;
-};
-
-export type ExportBackupResponse = {
-  data: string | undefined;
-  module: string | undefined;
-  version: string | undefined;
-  exportedAt: wellKnownTimestamp | undefined;
-  tenantId: number | undefined;
-  entityCounts: { [key: string]: number } | undefined;
-  schemaVersion: number | undefined;
-};
-
-// Encoded using RFC 3339, where generated output will always be Z-normalized
-// and uses 0, 3, 6 or 9 fractional digits.
-// Offsets other than "Z" are also accepted.
-type wellKnownTimestamp = string;
-
-export type ImportBackupRequest = {
-  data: string | undefined;
-  mode: RestoreMode | undefined;
-};
-
-export type ImportBackupResponse = {
-  success: boolean | undefined;
-  results: EntityImportResult[] | undefined;
-  warnings: string[] | undefined;
-  sourceVersion: number | undefined;
-  targetVersion: number | undefined;
-  migrationsApplied: number | undefined;
-};
-
-export type EntityImportResult = {
-  entityType: string | undefined;
-  total: number | undefined;
-  created: number | undefined;
-  updated: number | undefined;
-  skipped: number | undefined;
-  failed: number | undefined;
-};
-
-export interface BackupService {
-  ExportBackup(request: ExportBackupRequest): Promise<ExportBackupResponse>;
-  ImportBackup(request: ImportBackupRequest): Promise<ImportBackupResponse>;
-}
-
-type RequestType = {
-  path: string;
-  method: string;
-  body: string | null;
-};
-
-type RequestHandler = (request: RequestType, meta: { service: string, method: string }) => Promise<unknown>;
-
-export function createBackupServiceClient(
-  handler: RequestHandler
-): BackupService {
-  return {
-    ExportBackup(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
-      const path = `v1/backup/export`; // eslint-disable-line quotes
-      const body = null;
-      const queryParams: string[] = [];
-      if (request.tenantId) {
-        queryParams.push(`tenantId=${encodeURIComponent(request.tenantId.toString())}`)
-      }
-      if (request.includeSecrets) {
-        queryParams.push(`includeSecrets=${encodeURIComponent(request.includeSecrets.toString())}`)
-      }
-      let uri = path;
-      if (queryParams.length > 0) {
-        uri += `?${queryParams.join("&")}`
-      }
-      return handler({
-        path: uri,
-        method: "GET",
-        body,
-      }, {
-        service: "BackupService",
-        method: "ExportBackup",
-      }) as Promise<ExportBackupResponse>;
-    },
-    ImportBackup(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
-      const path = `v1/backup/import`; // eslint-disable-line quotes
-      const body = JSON.stringify(request);
-      const queryParams: string[] = [];
-      let uri = path;
-      if (queryParams.length > 0) {
-        uri += `?${queryParams.join("&")}`
-      }
-      return handler({
-        path: uri,
-        method: "POST",
-        body,
-      }, {
-        service: "BackupService",
-        method: "ImportBackup",
-      }) as Promise<ImportBackupResponse>;
-    },
-  };
-}
 // SchedulerErrorReason defines error codes for the scheduler service
 export type SchedulerErrorReason =
   | "BAD_REQUEST"
@@ -128,6 +23,11 @@ export type TaskExecution = {
   startedAt: wellKnownTimestamp | undefined;
   finishedAt?: wellKnownTimestamp;
 };
+
+// Encoded using RFC 3339, where generated output will always be Z-normalized
+// and uses 0, 3, 6 or 9 fractional digits.
+// Offsets other than "Z" are also accepted.
+type wellKnownTimestamp = string;
 
 // List Task Executions - Request
 export type ListTaskExecutionsRequest = {
@@ -324,6 +224,14 @@ export interface SchedulerTaskService {
   // List execution history for a task
   ListTaskExecutions(request: ListTaskExecutionsRequest): Promise<ListTaskExecutionsResponse>;
 }
+
+type RequestType = {
+  path: string;
+  method: string;
+  body: string | null;
+};
+
+type RequestHandler = (request: RequestType, meta: { service: string, method: string }) => Promise<unknown>;
 
 export function createSchedulerTaskServiceClient(
   handler: RequestHandler
@@ -598,6 +506,10 @@ export type UnregisterTaskTypesRequest = {
   moduleId: string | undefined;
 };
 
+export type UnregisterTaskTypesResponse = {
+  message: string | undefined;
+};
+
 export type ListRegisteredTaskTypesResponse = {
   taskTypes: RegisteredTaskType[] | undefined;
 };
@@ -622,7 +534,7 @@ export interface TaskTypeRegistrationService {
   // Idempotent — re-registration overwrites previous entries for the same module.
   RegisterTaskTypes(request: RegisterTaskTypesRequest): Promise<RegisterTaskTypesResponse>;
   // UnregisterTaskTypes removes all task types for a module (called on shutdown).
-  UnregisterTaskTypes(request: UnregisterTaskTypesRequest): Promise<wellKnownEmpty>;
+  UnregisterTaskTypes(request: UnregisterTaskTypesRequest): Promise<UnregisterTaskTypesResponse>;
   // ListRegisteredTaskTypes returns all registered task types across all modules.
   ListRegisteredTaskTypes(request: wellKnownEmpty): Promise<ListRegisteredTaskTypesResponse>;
 }
@@ -663,7 +575,7 @@ export function createTaskTypeRegistrationServiceClient(
       }, {
         service: "TaskTypeRegistrationService",
         method: "UnregisterTaskTypes",
-      }) as Promise<wellKnownEmpty>;
+      }) as Promise<UnregisterTaskTypesResponse>;
     },
     ListRegisteredTaskTypes(request) { // eslint-disable-line @typescript-eslint/no-unused-vars
       const path = `v1/task-types`; // eslint-disable-line quotes

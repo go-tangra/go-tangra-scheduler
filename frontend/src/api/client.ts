@@ -10,7 +10,6 @@ import { useAccessStore } from 'shell/vben/stores';
 import {
   createSchedulerTaskServiceClient,
   createTaskTypeRegistrationServiceClient,
-  createBackupServiceClient,
 } from '../generated/api/scheduler/service/v1';
 
 const MODULE_BASE_URL = '/admin/v1/modules/scheduler';
@@ -56,7 +55,6 @@ async function handler(req: RequestType): Promise<unknown> {
 // Generated typed service clients
 export const taskService = createSchedulerTaskServiceClient(handler);
 export const taskTypeService = createTaskTypeRegistrationServiceClient(handler);
-export const backupService = createBackupServiceClient(handler);
 
 // Re-export all generated types for convenience
 export type {
@@ -81,8 +79,4 @@ export type {
   RegisterTaskTypesRequest,
   RegisterTaskTypesResponse,
   TaskTypeDescriptor,
-  ExportBackupRequest,
-  ExportBackupResponse,
-  ImportBackupRequest,
-  ImportBackupResponse,
 } from '../generated/api/scheduler/service/v1';
