@@ -13,7 +13,7 @@ import (
 	"github.com/go-tangra/go-tangra-common/backup"
 	"github.com/go-tangra/go-tangra-common/grpcx"
 
-	schedulerV1 "github.com/go-tangra/go-tangra-scheduler/gen/go/scheduler/service/v1"
+	backupV1 "github.com/go-tangra/go-tangra-backup/gen/go/backup/service/v1"
 	"github.com/go-tangra/go-tangra-scheduler/internal/data/ent"
 	"github.com/go-tangra/go-tangra-scheduler/internal/data/ent/task"
 	"github.com/go-tangra/go-tangra-scheduler/internal/data/ent/taskexecution"
@@ -28,7 +28,7 @@ const (
 var backupMigrations = backup.NewMigrationRegistry(backupModule)
 
 type BackupService struct {
-	schedulerV1.UnimplementedBackupServiceServer
+	backupV1.UnimplementedBackupServiceServer
 
 	log       *log.Helper
 	entClient *entCrud.EntClient[*ent.Client]
@@ -41,7 +41,7 @@ func NewBackupService(ctx *bootstrap.Context, entClient *entCrud.EntClient[*ent.
 	}
 }
 
-func (s *BackupService) ExportBackup(ctx context.Context, req *schedulerV1.ExportBackupRequest) (*schedulerV1.ExportBackupResponse, error) {
+func (s *BackupService) ExportBackup(ctx context.Context, req *backupV1.ExportBackupRequest) (*backupV1.ExportBackupResponse, error) {
 	tenantID := grpcx.GetTenantIDFromContext(ctx)
 	full := false
 
@@ -98,7 +98,7 @@ func (s *BackupService) ExportBackup(ctx context.Context, req *schedulerV1.Expor
 	s.log.Infof("exported backup: module=%s tenant=%d full=%v entities=%v",
 		backupModule, tenantID, full, a.Manifest.EntityCounts)
 
-	return &schedulerV1.ExportBackupResponse{
+	return &backupV1.ExportBackupResponse{
 		Data:          data,
 		Module:        backupModule,
 		Version:       fmt.Sprintf("%d", backupSchemaVersion),
@@ -109,7 +109,7 @@ func (s *BackupService) ExportBackup(ctx context.Context, req *schedulerV1.Expor
 	}, nil
 }
 
-func (s *BackupService) ImportBackup(ctx context.Context, req *schedulerV1.ImportBackupRequest) (*schedulerV1.ImportBackupResponse, error) {
+func (s *BackupService) ImportBackup(ctx context.Context, req *backupV1.ImportBackupRequest) (*backupV1.ImportBackupResponse, error) {
 	tenantID := grpcx.GetTenantIDFromContext(ctx)
 	isPlatformAdmin := grpcx.IsPlatformAdmin(ctx)
 	mode := mapRestoreMode(req.GetMode())
@@ -150,9 +150,9 @@ func (s *BackupService) ImportBackup(ctx context.Context, req *schedulerV1.Impor
 	s.log.Infof("imported backup: module=%s tenant=%d migrations=%d results=%d",
 		backupModule, tenantID, applied, len(result.Results))
 
-	protoResults := make([]*schedulerV1.EntityImportResult, len(result.Results))
+	protoResults := make([]*backupV1.EntityImportResult, len(result.Results))
 	for i, r := range result.Results {
-		protoResults[i] = &schedulerV1.EntityImportResult{
+		protoResults[i] = &backupV1.EntityImportResult{
 			EntityType: r.EntityType,
 			Total:      r.Total,
 			Created:    r.Created,
@@ -162,7 +162,7 @@ func (s *BackupService) ImportBackup(ctx context.Context, req *schedulerV1.Impor
 		}
 	}
 
-	return &schedulerV1.ImportBackupResponse{
+	return &backupV1.ImportBackupResponse{
 		Success:           result.Success,
 		Results:           protoResults,
 		Warnings:          result.Warnings,
@@ -172,8 +172,8 @@ func (s *BackupService) ImportBackup(ctx context.Context, req *schedulerV1.Impor
 	}, nil
 }
 
-func mapRestoreMode(m schedulerV1.RestoreMode) backup.RestoreMode {
-	if m == schedulerV1.RestoreMode_RESTORE_MODE_OVERWRITE {
+func mapRestoreMode(m backupV1.RestoreMode) backup.RestoreMode {
+	if m == backupV1.RestoreMode_RESTORE_MODE_OVERWRITE {
 		return backup.RestoreModeOverwrite
 	}
 	return backup.RestoreModeSkip

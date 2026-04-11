@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-tangra/go-tangra-common/viewer"
 
+	backupV1 "github.com/go-tangra/go-tangra-backup/gen/go/backup/service/v1"
 	commonV1 "github.com/go-tangra/go-tangra-common/gen/go/common/service/v1"
 	schedulerV1 "github.com/go-tangra/go-tangra-scheduler/gen/go/scheduler/service/v1"
 	"github.com/go-tangra/go-tangra-scheduler/internal/cert"
@@ -112,8 +113,8 @@ func NewGRPCServer(
 	// common.service.v1.TaskTypeRegistrationService without importing scheduler protos
 	commonV1.RegisterTaskTypeRegistrationServiceServer(srv, service.NewTaskTypeCommonAdapter(taskTypeSvc))
 
-	// Register backup service
-	schedulerV1.RegisterBackupServiceServer(srv, backupSvc)
+	// Register backup service (from buf.build/go-tangra/backup proto)
+	backupV1.RegisterBackupServiceServer(srv, backupSvc)
 
 	return srv
 }
