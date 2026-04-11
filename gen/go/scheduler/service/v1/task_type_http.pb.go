@@ -31,7 +31,7 @@ type TaskTypeRegistrationServiceHTTPServer interface {
 	// Idempotent — re-registration overwrites previous entries for the same module.
 	RegisterTaskTypes(context.Context, *RegisterTaskTypesRequest) (*RegisterTaskTypesResponse, error)
 	// UnregisterTaskTypes UnregisterTaskTypes removes all task types for a module (called on shutdown).
-	UnregisterTaskTypes(context.Context, *UnregisterTaskTypesRequest) (*emptypb.Empty, error)
+	UnregisterTaskTypes(context.Context, *UnregisterTaskTypesRequest) (*UnregisterTaskTypesResponse, error)
 }
 
 func RegisterTaskTypeRegistrationServiceHTTPServer(s *http.Server, srv TaskTypeRegistrationServiceHTTPServer) {
@@ -80,7 +80,7 @@ func _TaskTypeRegistrationService_UnregisterTaskTypes0_HTTP_Handler(srv TaskType
 		if err != nil {
 			return err
 		}
-		reply := out.(*emptypb.Empty)
+		reply := out.(*UnregisterTaskTypesResponse)
 		return ctx.Result(200, reply)
 	}
 }
@@ -111,7 +111,7 @@ type TaskTypeRegistrationServiceHTTPClient interface {
 	// Idempotent — re-registration overwrites previous entries for the same module.
 	RegisterTaskTypes(ctx context.Context, req *RegisterTaskTypesRequest, opts ...http.CallOption) (rsp *RegisterTaskTypesResponse, err error)
 	// UnregisterTaskTypes UnregisterTaskTypes removes all task types for a module (called on shutdown).
-	UnregisterTaskTypes(ctx context.Context, req *UnregisterTaskTypesRequest, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
+	UnregisterTaskTypes(ctx context.Context, req *UnregisterTaskTypesRequest, opts ...http.CallOption) (rsp *UnregisterTaskTypesResponse, err error)
 }
 
 type TaskTypeRegistrationServiceHTTPClientImpl struct {
@@ -152,8 +152,8 @@ func (c *TaskTypeRegistrationServiceHTTPClientImpl) RegisterTaskTypes(ctx contex
 }
 
 // UnregisterTaskTypes UnregisterTaskTypes removes all task types for a module (called on shutdown).
-func (c *TaskTypeRegistrationServiceHTTPClientImpl) UnregisterTaskTypes(ctx context.Context, in *UnregisterTaskTypesRequest, opts ...http.CallOption) (*emptypb.Empty, error) {
-	var out emptypb.Empty
+func (c *TaskTypeRegistrationServiceHTTPClientImpl) UnregisterTaskTypes(ctx context.Context, in *UnregisterTaskTypesRequest, opts ...http.CallOption) (*UnregisterTaskTypesResponse, error) {
+	var out UnregisterTaskTypesResponse
 	pattern := "/v1/task-types:unregister"
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationTaskTypeRegistrationServiceUnregisterTaskTypes))

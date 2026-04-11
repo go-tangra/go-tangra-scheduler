@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-kratos/kratos/v2/log"
@@ -101,7 +102,7 @@ func (s *TaskTypeService) RegisterTaskTypes(
 func (s *TaskTypeService) UnregisterTaskTypes(
 	ctx context.Context,
 	req *schedulerV1.UnregisterTaskTypesRequest,
-) (*emptypb.Empty, error) {
+) (*schedulerV1.UnregisterTaskTypesResponse, error) {
 	moduleID := req.GetModuleId()
 
 	count := s.registry.UnregisterModule(moduleID)
@@ -111,7 +112,9 @@ func (s *TaskTypeService) UnregisterTaskTypes(
 	}
 
 	s.log.Infof("Unregistered %d task types for module %s", count, moduleID)
-	return &emptypb.Empty{}, nil
+	return &schedulerV1.UnregisterTaskTypesResponse{
+		Message: fmt.Sprintf("Unregistered %d task types for module %s", count, moduleID),
+	}, nil
 }
 
 func (s *TaskTypeService) ListRegisteredTaskTypes(

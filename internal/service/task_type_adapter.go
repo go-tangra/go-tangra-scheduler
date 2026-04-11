@@ -3,8 +3,6 @@ package service
 import (
 	"context"
 
-	"google.golang.org/protobuf/types/known/emptypb"
-
 	commonV1 "github.com/go-tangra/go-tangra-common/gen/go/common/service/v1"
 	schedulerV1 "github.com/go-tangra/go-tangra-scheduler/gen/go/scheduler/service/v1"
 )
@@ -56,8 +54,15 @@ func (a *TaskTypeCommonAdapter) RegisterTaskTypes(
 func (a *TaskTypeCommonAdapter) UnregisterTaskTypes(
 	ctx context.Context,
 	req *commonV1.UnregisterTaskTypesRequest,
-) (*emptypb.Empty, error) {
-	return a.inner.UnregisterTaskTypes(ctx, &schedulerV1.UnregisterTaskTypesRequest{
+) (*commonV1.UnregisterTaskTypesResponse, error) {
+	resp, err := a.inner.UnregisterTaskTypes(ctx, &schedulerV1.UnregisterTaskTypesRequest{
 		ModuleId: req.GetModuleId(),
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &commonV1.UnregisterTaskTypesResponse{
+		Message: resp.GetMessage(),
+	}, nil
 }

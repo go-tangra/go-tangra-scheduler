@@ -266,6 +266,50 @@ func (x *UnregisterTaskTypesRequest) GetModuleId() string {
 	return ""
 }
 
+type UnregisterTaskTypesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnregisterTaskTypesResponse) Reset() {
+	*x = UnregisterTaskTypesResponse{}
+	mi := &file_scheduler_service_v1_task_type_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnregisterTaskTypesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnregisterTaskTypesResponse) ProtoMessage() {}
+
+func (x *UnregisterTaskTypesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_scheduler_service_v1_task_type_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnregisterTaskTypesResponse.ProtoReflect.Descriptor instead.
+func (*UnregisterTaskTypesResponse) Descriptor() ([]byte, []int) {
+	return file_scheduler_service_v1_task_type_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *UnregisterTaskTypesResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 type ListRegisteredTaskTypesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TaskTypes     []*RegisteredTaskType  `protobuf:"bytes,1,rep,name=task_types,json=taskTypes,proto3" json:"task_types,omitempty"`
@@ -275,7 +319,7 @@ type ListRegisteredTaskTypesResponse struct {
 
 func (x *ListRegisteredTaskTypesResponse) Reset() {
 	*x = ListRegisteredTaskTypesResponse{}
-	mi := &file_scheduler_service_v1_task_type_proto_msgTypes[4]
+	mi := &file_scheduler_service_v1_task_type_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -287,7 +331,7 @@ func (x *ListRegisteredTaskTypesResponse) String() string {
 func (*ListRegisteredTaskTypesResponse) ProtoMessage() {}
 
 func (x *ListRegisteredTaskTypesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_scheduler_service_v1_task_type_proto_msgTypes[4]
+	mi := &file_scheduler_service_v1_task_type_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -300,7 +344,7 @@ func (x *ListRegisteredTaskTypesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRegisteredTaskTypesResponse.ProtoReflect.Descriptor instead.
 func (*ListRegisteredTaskTypesResponse) Descriptor() ([]byte, []int) {
-	return file_scheduler_service_v1_task_type_proto_rawDescGZIP(), []int{4}
+	return file_scheduler_service_v1_task_type_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ListRegisteredTaskTypesResponse) GetTaskTypes() []*RegisteredTaskType {
@@ -326,7 +370,7 @@ type RegisteredTaskType struct {
 
 func (x *RegisteredTaskType) Reset() {
 	*x = RegisteredTaskType{}
-	mi := &file_scheduler_service_v1_task_type_proto_msgTypes[5]
+	mi := &file_scheduler_service_v1_task_type_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -338,7 +382,7 @@ func (x *RegisteredTaskType) String() string {
 func (*RegisteredTaskType) ProtoMessage() {}
 
 func (x *RegisteredTaskType) ProtoReflect() protoreflect.Message {
-	mi := &file_scheduler_service_v1_task_type_proto_msgTypes[5]
+	mi := &file_scheduler_service_v1_task_type_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -351,7 +395,7 @@ func (x *RegisteredTaskType) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisteredTaskType.ProtoReflect.Descriptor instead.
 func (*RegisteredTaskType) Descriptor() ([]byte, []int) {
-	return file_scheduler_service_v1_task_type_proto_rawDescGZIP(), []int{5}
+	return file_scheduler_service_v1_task_type_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *RegisteredTaskType) GetTaskType() string {
@@ -423,7 +467,9 @@ const file_scheduler_service_v1_task_type_proto_rawDesc = "" +
 	"\x10registered_count\x18\x01 \x01(\x05R\x0fregisteredCount\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"B\n" +
 	"\x1aUnregisterTaskTypesRequest\x12$\n" +
-	"\tmodule_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bmoduleId\"j\n" +
+	"\tmodule_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bmoduleId\"7\n" +
+	"\x1bUnregisterTaskTypesResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"j\n" +
 	"\x1fListRegisteredTaskTypesResponse\x12G\n" +
 	"\n" +
 	"task_types\x18\x01 \x03(\v2(.scheduler.service.v1.RegisteredTaskTypeR\ttaskTypes\"\x89\x02\n" +
@@ -434,10 +480,10 @@ const file_scheduler_service_v1_task_type_proto_rawDesc = "" +
 	"\vdescription\x18\x04 \x01(\tR\vdescription\x12%\n" +
 	"\x0epayload_schema\x18\x05 \x01(\tR\rpayloadSchema\x12!\n" +
 	"\fdefault_cron\x18\x06 \x01(\tR\vdefaultCron\x12*\n" +
-	"\x11default_max_retry\x18\a \x01(\x05R\x0fdefaultMaxRetry2\xc3\x03\n" +
+	"\x11default_max_retry\x18\a \x01(\x05R\x0fdefaultMaxRetry2\xde\x03\n" +
 	"\x1bTaskTypeRegistrationService\x12\x98\x01\n" +
-	"\x11RegisterTaskTypes\x12..scheduler.service.v1.RegisterTaskTypesRequest\x1a/.scheduler.service.v1.RegisterTaskTypesResponse\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/v1/task-types:register\x12\x85\x01\n" +
-	"\x13UnregisterTaskTypes\x120.scheduler.service.v1.UnregisterTaskTypesRequest\x1a\x16.google.protobuf.Empty\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/v1/task-types:unregister\x12\x80\x01\n" +
+	"\x11RegisterTaskTypes\x12..scheduler.service.v1.RegisterTaskTypesRequest\x1a/.scheduler.service.v1.RegisterTaskTypesResponse\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/v1/task-types:register\x12\xa0\x01\n" +
+	"\x13UnregisterTaskTypes\x120.scheduler.service.v1.UnregisterTaskTypesRequest\x1a1.scheduler.service.v1.UnregisterTaskTypesResponse\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/v1/task-types:unregister\x12\x80\x01\n" +
 	"\x17ListRegisteredTaskTypes\x12\x16.google.protobuf.Empty\x1a5.scheduler.service.v1.ListRegisteredTaskTypesResponse\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/v1/task-typesB\xed\x01\n" +
 	"\x18com.scheduler.service.v1B\rTaskTypeProtoP\x01ZPgithub.com/go-tangra/go-tangra-scheduler/gen/go/scheduler/service/v1;schedulerpb\xa2\x02\x03SSX\xaa\x02\x14Scheduler.Service.V1\xca\x02\x14Scheduler\\Service\\V1\xe2\x02 Scheduler\\Service\\V1\\GPBMetadata\xea\x02\x16Scheduler::Service::V1b\x06proto3"
 
@@ -453,25 +499,26 @@ func file_scheduler_service_v1_task_type_proto_rawDescGZIP() []byte {
 	return file_scheduler_service_v1_task_type_proto_rawDescData
 }
 
-var file_scheduler_service_v1_task_type_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_scheduler_service_v1_task_type_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_scheduler_service_v1_task_type_proto_goTypes = []any{
 	(*TaskTypeDescriptor)(nil),              // 0: scheduler.service.v1.TaskTypeDescriptor
 	(*RegisterTaskTypesRequest)(nil),        // 1: scheduler.service.v1.RegisterTaskTypesRequest
 	(*RegisterTaskTypesResponse)(nil),       // 2: scheduler.service.v1.RegisterTaskTypesResponse
 	(*UnregisterTaskTypesRequest)(nil),      // 3: scheduler.service.v1.UnregisterTaskTypesRequest
-	(*ListRegisteredTaskTypesResponse)(nil), // 4: scheduler.service.v1.ListRegisteredTaskTypesResponse
-	(*RegisteredTaskType)(nil),              // 5: scheduler.service.v1.RegisteredTaskType
-	(*emptypb.Empty)(nil),                   // 6: google.protobuf.Empty
+	(*UnregisterTaskTypesResponse)(nil),     // 4: scheduler.service.v1.UnregisterTaskTypesResponse
+	(*ListRegisteredTaskTypesResponse)(nil), // 5: scheduler.service.v1.ListRegisteredTaskTypesResponse
+	(*RegisteredTaskType)(nil),              // 6: scheduler.service.v1.RegisteredTaskType
+	(*emptypb.Empty)(nil),                   // 7: google.protobuf.Empty
 }
 var file_scheduler_service_v1_task_type_proto_depIdxs = []int32{
 	0, // 0: scheduler.service.v1.RegisterTaskTypesRequest.task_types:type_name -> scheduler.service.v1.TaskTypeDescriptor
-	5, // 1: scheduler.service.v1.ListRegisteredTaskTypesResponse.task_types:type_name -> scheduler.service.v1.RegisteredTaskType
+	6, // 1: scheduler.service.v1.ListRegisteredTaskTypesResponse.task_types:type_name -> scheduler.service.v1.RegisteredTaskType
 	1, // 2: scheduler.service.v1.TaskTypeRegistrationService.RegisterTaskTypes:input_type -> scheduler.service.v1.RegisterTaskTypesRequest
 	3, // 3: scheduler.service.v1.TaskTypeRegistrationService.UnregisterTaskTypes:input_type -> scheduler.service.v1.UnregisterTaskTypesRequest
-	6, // 4: scheduler.service.v1.TaskTypeRegistrationService.ListRegisteredTaskTypes:input_type -> google.protobuf.Empty
+	7, // 4: scheduler.service.v1.TaskTypeRegistrationService.ListRegisteredTaskTypes:input_type -> google.protobuf.Empty
 	2, // 5: scheduler.service.v1.TaskTypeRegistrationService.RegisterTaskTypes:output_type -> scheduler.service.v1.RegisterTaskTypesResponse
-	6, // 6: scheduler.service.v1.TaskTypeRegistrationService.UnregisterTaskTypes:output_type -> google.protobuf.Empty
-	4, // 7: scheduler.service.v1.TaskTypeRegistrationService.ListRegisteredTaskTypes:output_type -> scheduler.service.v1.ListRegisteredTaskTypesResponse
+	4, // 6: scheduler.service.v1.TaskTypeRegistrationService.UnregisterTaskTypes:output_type -> scheduler.service.v1.UnregisterTaskTypesResponse
+	5, // 7: scheduler.service.v1.TaskTypeRegistrationService.ListRegisteredTaskTypes:output_type -> scheduler.service.v1.ListRegisteredTaskTypesResponse
 	5, // [5:8] is the sub-list for method output_type
 	2, // [2:5] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
@@ -490,7 +537,7 @@ func file_scheduler_service_v1_task_type_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_scheduler_service_v1_task_type_proto_rawDesc), len(file_scheduler_service_v1_task_type_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

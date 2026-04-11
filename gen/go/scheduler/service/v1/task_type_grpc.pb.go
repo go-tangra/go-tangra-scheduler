@@ -38,7 +38,7 @@ type TaskTypeRegistrationServiceClient interface {
 	// Idempotent — re-registration overwrites previous entries for the same module.
 	RegisterTaskTypes(ctx context.Context, in *RegisterTaskTypesRequest, opts ...grpc.CallOption) (*RegisterTaskTypesResponse, error)
 	// UnregisterTaskTypes removes all task types for a module (called on shutdown).
-	UnregisterTaskTypes(ctx context.Context, in *UnregisterTaskTypesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	UnregisterTaskTypes(ctx context.Context, in *UnregisterTaskTypesRequest, opts ...grpc.CallOption) (*UnregisterTaskTypesResponse, error)
 	// ListRegisteredTaskTypes returns all registered task types across all modules.
 	ListRegisteredTaskTypes(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListRegisteredTaskTypesResponse, error)
 }
@@ -61,9 +61,9 @@ func (c *taskTypeRegistrationServiceClient) RegisterTaskTypes(ctx context.Contex
 	return out, nil
 }
 
-func (c *taskTypeRegistrationServiceClient) UnregisterTaskTypes(ctx context.Context, in *UnregisterTaskTypesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *taskTypeRegistrationServiceClient) UnregisterTaskTypes(ctx context.Context, in *UnregisterTaskTypesRequest, opts ...grpc.CallOption) (*UnregisterTaskTypesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(UnregisterTaskTypesResponse)
 	err := c.cc.Invoke(ctx, TaskTypeRegistrationService_UnregisterTaskTypes_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ type TaskTypeRegistrationServiceServer interface {
 	// Idempotent — re-registration overwrites previous entries for the same module.
 	RegisterTaskTypes(context.Context, *RegisterTaskTypesRequest) (*RegisterTaskTypesResponse, error)
 	// UnregisterTaskTypes removes all task types for a module (called on shutdown).
-	UnregisterTaskTypes(context.Context, *UnregisterTaskTypesRequest) (*emptypb.Empty, error)
+	UnregisterTaskTypes(context.Context, *UnregisterTaskTypesRequest) (*UnregisterTaskTypesResponse, error)
 	// ListRegisteredTaskTypes returns all registered task types across all modules.
 	ListRegisteredTaskTypes(context.Context, *emptypb.Empty) (*ListRegisteredTaskTypesResponse, error)
 	mustEmbedUnimplementedTaskTypeRegistrationServiceServer()
@@ -110,7 +110,7 @@ type UnimplementedTaskTypeRegistrationServiceServer struct{}
 func (UnimplementedTaskTypeRegistrationServiceServer) RegisterTaskTypes(context.Context, *RegisterTaskTypesRequest) (*RegisterTaskTypesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RegisterTaskTypes not implemented")
 }
-func (UnimplementedTaskTypeRegistrationServiceServer) UnregisterTaskTypes(context.Context, *UnregisterTaskTypesRequest) (*emptypb.Empty, error) {
+func (UnimplementedTaskTypeRegistrationServiceServer) UnregisterTaskTypes(context.Context, *UnregisterTaskTypesRequest) (*UnregisterTaskTypesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UnregisterTaskTypes not implemented")
 }
 func (UnimplementedTaskTypeRegistrationServiceServer) ListRegisteredTaskTypes(context.Context, *emptypb.Empty) (*ListRegisteredTaskTypesResponse, error) {

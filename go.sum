@@ -82,10 +82,8 @@ github.com/go-playground/form/v4 v4.3.0 h1:OVttojbQv2WNCs4P+VnjPtrt/+30Ipw4890W3
 github.com/go-playground/form/v4 v4.3.0/go.mod h1:Cpe1iYJKoXb1vILRXEwxpWMGWyQuqplQ/4cvPecy+Jo=
 github.com/go-sql-driver/mysql v1.9.3 h1:U/N249h2WzJ3Ukj8SowVFjdtZKfu9vlLZxjPXV1aweo=
 github.com/go-sql-driver/mysql v1.9.3/go.mod h1:qn46aNg1333BRMNU69Lq93t8du/dwxI64Gl8i5p1WMU=
-github.com/go-tangra/go-tangra-common v1.15.0 h1:Pp9LqeCJUywrsGFCQvUGgmpjENulwXRngSovmXJH8aY=
-github.com/go-tangra/go-tangra-common v1.15.0/go.mod h1:3Rr2IK14RJgZsiiD451nmYUxmOWSykDOkSD8CZtnm6Q=
-github.com/go-tangra/go-tangra-common v1.16.0 h1:/8vEstjPXS8c3cLVq9Qatd9V3lqTJyPxq/XU8DBSpWE=
-github.com/go-tangra/go-tangra-common v1.16.0/go.mod h1:3Rr2IK14RJgZsiiD451nmYUxmOWSykDOkSD8CZtnm6Q=
+github.com/go-tangra/go-tangra-common v1.16.1-0.20260411073756-4ed783b68c9f h1:5645dSKhx2i1Dq33+3jZdy6bjgcaf/+nltwwOP8VffM=
+github.com/go-tangra/go-tangra-common v1.16.1-0.20260411073756-4ed783b68c9f/go.mod h1:3Rr2IK14RJgZsiiD451nmYUxmOWSykDOkSD8CZtnm6Q=
 github.com/go-test/deep v1.0.3 h1:ZrJSEWsXzPOxaZnFteGEfooLba+ju3FYIbOrS+rQd68=
 github.com/go-test/deep v1.0.3/go.mod h1:wGDj63lr65AM2AQyKZd/NYHGb0R+1RLqB8NKt3aSFNA=
 github.com/golang/protobuf v1.5.4 h1:i7eJL8qZTpSEXOPTxNKhASYpMn+8e5Q6AdndVa1dWek=

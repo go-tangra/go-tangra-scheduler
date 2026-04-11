@@ -23,7 +23,7 @@ service TaskTypeRegistrationService {
   }
 
   // UnregisterTaskTypes removes all task types for a module (called on shutdown).
-  rpc UnregisterTaskTypes (UnregisterTaskTypesRequest) returns (google.protobuf.Empty) {
+  rpc UnregisterTaskTypes (UnregisterTaskTypesRequest) returns (UnregisterTaskTypesResponse) {
     option (google.api.http) = {
       post: "/v1/task-types:unregister"
       body: "*"
@@ -75,6 +75,10 @@ message RegisterTaskTypesResponse {
 
 message UnregisterTaskTypesRequest {
   string module_id = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+message UnregisterTaskTypesResponse {
+  string message = 1;
 }
 
 message ListRegisteredTaskTypesResponse {
