@@ -82,13 +82,16 @@ func NewGRPCServer(
 	ms = append(ms, metadata.Server())
 	ms = append(ms, logging.Server(ctx.GetLogger()))
 
-	ms = append(ms, mtls.MTLSMiddleware(
-		ctx.GetLogger(),
-		mtls.WithPublicEndpoints(
-			"/grpc.health.v1.Health/Check",
-			"/grpc.health.v1.Health/Watch",
-		),
-	))
+	// Add mTLS middleware only when TLS is enabled
+	if certManager != nil && certManager.IsTLSEnabled() {
+		ms = append(ms, mtls.MTLSMiddleware(
+			ctx.GetLogger(),
+			mtls.WithPublicEndpoints(
+				"/grpc.health.v1.Health/Check",
+				"/grpc.health.v1.Health/Watch",
+			),
+		))
+	}
 
 	ms = append(ms, audit.Server(
 		ctx.GetLogger(),
