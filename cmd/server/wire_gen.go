@@ -21,7 +21,7 @@ import (
 
 // initApp initializes the Wire provider entry for the kratos application
 func initApp(context *bootstrap.Context) (*kratos.App, func(), error) {
-	certManager, err := cert.NewCertManager(context)
+	v, err := cert.NewCertManager(context)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -35,10 +35,6 @@ func initApp(context *bootstrap.Context) (*kratos.App, func(), error) {
 	taskTypeRegistry := executor.NewTaskTypeRegistry()
 	taskService := service.NewTaskService(context, taskRepo, taskExecutionRepo, taskTypeRegistry)
 	taskTypeRepo := data.NewTaskTypeRepo(context, entClient)
-	taskTypeService := service.NewTaskTypeService(context, taskTypeRegistry, taskTypeRepo)
-	backupService := service.NewBackupService(context, entClient)
-	grpcServer := server.NewGRPCServer(context, certManager, collector, taskService, taskTypeService, backupService)
-	httpServer := server.NewHTTPServer(context)
 	client, err := data.NewRegistrationClient(context)
 	if err != nil {
 		cleanup()
@@ -48,6 +44,10 @@ func initApp(context *bootstrap.Context) (*kratos.App, func(), error) {
 	moduleConnPool := executor.ProvideModuleConnPool(context, moduleDialer)
 	compositeExecutionRecorder := data.NewCompositeExecutionRecorder(taskRepo, taskExecutionRepo)
 	remoteExecutor := executor.ProvideRemoteExecutor(context, taskTypeRegistry, moduleConnPool, compositeExecutionRecorder)
+	taskTypeService := service.NewTaskTypeService(context, taskTypeRegistry, taskTypeRepo, remoteExecutor)
+	backupService := service.NewBackupService(context, entClient)
+	grpcServer := server.NewGRPCServer(context, v, collector, taskService, taskTypeService, backupService)
+	httpServer := server.NewHTTPServer(context)
 	asynqServer, err := server.NewAsynqServer(context, taskService, taskTypeService, remoteExecutor, taskTypeRegistry)
 	if err != nil {
 		cleanup()

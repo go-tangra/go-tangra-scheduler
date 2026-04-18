@@ -31,6 +31,10 @@ func NewAsynqServer(
 
 	srv := bootstrapAsynq.NewAsynqServer(cfg.Server.Asynq)
 
+	// Allow TaskTypeService to register asynq handlers dynamically
+	// when modules register task types after startup
+	taskTypeService.SetAsynqServer(srv)
+
 	taskService.RegisterTaskScheduler(srv)
 
 	// Load persisted task types from DB and register handlers

@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/tx7do/kratos-bootstrap/bootstrap"
+	asynqServer "github.com/tx7do/kratos-transport/transport/asynq"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	schedulerV1 "github.com/go-tangra/go-tangra-scheduler/gen/go/scheduler/service/v1"
@@ -19,21 +20,31 @@ import (
 type TaskTypeService struct {
 	schedulerV1.UnimplementedTaskTypeRegistrationServiceServer
 
-	log          *log.Helper
-	registry     *executor.TaskTypeRegistry
-	taskTypeRepo *data.TaskTypeRepo
+	log            *log.Helper
+	registry       *executor.TaskTypeRegistry
+	taskTypeRepo   *data.TaskTypeRepo
+	remoteExecutor *executor.RemoteExecutor
+	asynqServer    *asynqServer.Server
 }
 
 func NewTaskTypeService(
 	ctx *bootstrap.Context,
 	registry *executor.TaskTypeRegistry,
 	taskTypeRepo *data.TaskTypeRepo,
+	remoteExecutor *executor.RemoteExecutor,
 ) *TaskTypeService {
 	return &TaskTypeService{
-		log:          ctx.NewLoggerHelper("task-type/service/scheduler-service"),
-		registry:     registry,
-		taskTypeRepo: taskTypeRepo,
+		log:            ctx.NewLoggerHelper("task-type/service/scheduler-service"),
+		registry:       registry,
+		taskTypeRepo:   taskTypeRepo,
+		remoteExecutor: remoteExecutor,
 	}
+}
+
+// SetAsynqServer sets the asynq server reference for dynamic handler registration.
+// Called after the asynq server is created (avoids circular dependency).
+func (s *TaskTypeService) SetAsynqServer(srv *asynqServer.Server) {
+	s.asynqServer = srv
 }
 
 // LoadFromDB loads persisted task types into the in-memory registry.
@@ -88,6 +99,13 @@ func (s *TaskTypeService) RegisterTaskTypes(
 
 		// Update in-memory registry
 		s.registry.Register(entry)
+
+		// Register asynq handler dynamically so tasks enqueued after startup are handled
+		if s.asynqServer != nil && s.remoteExecutor != nil {
+			if err := asynqServer.RegisterSubscriber(s.asynqServer, desc.GetTaskType(), s.remoteExecutor.Handle); err != nil {
+				s.log.Warnf("Failed to register asynq handler for task type %s: %v", desc.GetTaskType(), err)
+			}
+		}
 
 		s.log.Infof("Registered task type: %s (module=%s, display=%s)",
 			desc.GetTaskType(), moduleID, desc.GetDisplayName())
