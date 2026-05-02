@@ -24,7 +24,6 @@ func (a *TaskTypeCommonAdapter) RegisterTaskTypes(
 	ctx context.Context,
 	req *commonV1.RegisterTaskTypesRequest,
 ) (*commonV1.RegisterTaskTypesResponse, error) {
-	// Convert common proto → scheduler proto
 	descs := make([]*schedulerV1.TaskTypeDescriptor, 0, len(req.GetTaskTypes()))
 	for _, d := range req.GetTaskTypes() {
 		descs = append(descs, &schedulerV1.TaskTypeDescriptor{
@@ -61,7 +60,6 @@ func (a *TaskTypeCommonAdapter) UnregisterTaskTypes(
 	if err != nil {
 		return nil, err
 	}
-
 	return &commonV1.UnregisterTaskTypesResponse{
 		Message: resp.GetMessage(),
 	}, nil
