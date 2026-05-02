@@ -28,6 +28,7 @@ RUN curl -sSL "https://github.com/bufbuild/buf/releases/latest/download/buf-$(un
 
 WORKDIR /src
 
+# Copy go mod files first for better caching
 COPY go.mod go.sum ./
 RUN go mod download
 
@@ -73,7 +74,7 @@ COPY --from=builder /src/configs/ /app/configs/
 
 RUN addgroup -g 1000 scheduler && \
     adduser -D -u 1000 -G scheduler scheduler && \
-    chown -R scheduler:scheduler /app
+    mkdir -p /app/certs && chown -R scheduler:scheduler /app
 
 USER scheduler:scheduler
 
