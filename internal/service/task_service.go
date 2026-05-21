@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+	"strings"
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/hibiken/asynq"
@@ -277,15 +277,30 @@ func (s *TaskService) convertTaskOption(t *schedulerV1.Task) (opts []asynq.Optio
 		return
 	}
 
-	if len(t.GetTaskPayload()) > 0 {
-		if err := json.Unmarshal([]byte(t.GetTaskPayload()), &payload); err != nil {
-			s.log.Warnf("failed to unmarshal task payload for %s: %v", t.GetTypeName(), err)
+	// Wrap the user-supplied JSON payload in a RemoteTaskData envelope
+	// so that downstream RemoteExecutor.Handle receives the raw bytes
+	// in its .Payload field instead of an empty struct.
+	//
+	// Background: asynq serializes the second argument of NewTask to JSON
+	// and the worker deserializes it back into the registered handler's
+	// argument type (RemoteTaskData here). If we hand asynq the user's
+	// raw map (e.g. {"recipient":"…"}), JSON unmarshal into
+	// RemoteTaskData ignores every key because none match Payload/
+	// TenantID/Attempt/etc — and the module-side TaskExecutor sees an
+	// empty ExecuteTaskRequest.payload.
+	//
+	// Fix: emit the user's task_payload string verbatim as the .Payload
+	// []byte field of RemoteTaskData. TenantID/Attempt/MaxAttempts/
+	// ScheduledAt get filled by asynq's middleware at dispatch time
+	// (see RemoteExecutor) so they remain zero here.
+	var payloadBytes []byte
+	if raw := t.GetTaskPayload(); raw != "" {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed != "" {
+			payloadBytes = []byte(trimmed)
 		}
 	}
-	// Ensure payload is never nil (asynq requires non-nil message)
-	if payload == nil {
-		payload = map[string]any{}
-	}
+	payload = executor.RemoteTaskData{Payload: payloadBytes}
 
 	if t.TaskOptions != nil {
 		if t.GetTaskOptions().GetMaxRetry() > 0 {
