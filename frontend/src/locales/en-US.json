@@ -61,6 +61,20 @@
       "retention": "Result Retention",
       "group": "Group",
       "taskID": "Task ID"
+    },
+    "history": {
+      "title": "Task Execution History",
+      "openButton": "Execution history",
+      "lastMessage": "Last message",
+      "showAll": "All runs",
+      "showFailedOnly": "Failed only",
+      "noRuns": "No executions recorded yet",
+      "noFailures": "No failures on this page — nice",
+      "runsOnPage": "Runs on page",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "totalRuns": "Total runs",
+      "attempt": "Attempt"
     }
   }
 }

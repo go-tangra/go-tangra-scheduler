@@ -4,7 +4,7 @@ import type { VxeGridProps } from 'shell/adapter/vxe-table';
 import { h, computed } from 'vue';
 
 import { Page, useVbenDrawer, type VbenFormProps } from 'shell/vben/common-ui';
-import { LucidePencil, LucideTrash, LucideCirclePlay, LucidePlus } from 'shell/vben/icons';
+import { LucidePencil, LucideTrash, LucideCirclePlay, LucidePlus, LucideEye } from 'shell/vben/icons';
 
 import { notification, Space, Button, Tag, Dropdown, Menu, MenuItem, Tooltip } from 'ant-design-vue';
 
@@ -14,6 +14,7 @@ import { useSchedulerTaskStore } from '../../stores/scheduler-task.state';
 import type { Task } from '../../api/client';
 
 import TaskDrawer from './task-drawer.vue';
+import HistoryDrawer from './history-drawer.vue';
 
 const taskStore = useSchedulerTaskStore();
 
@@ -160,6 +161,15 @@ const [TaskDrawerComponent, taskDrawerApi] = useVbenDrawer({
     }
   },
 });
+
+const [HistoryDrawerComponent, historyDrawerApi] = useVbenDrawer({
+  connectedComponent: HistoryDrawer,
+});
+
+function handleHistory(row: Task) {
+  historyDrawerApi.setData({ row });
+  historyDrawerApi.open();
+}
 
 function handleCreate() {
   taskDrawerApi.setData({ mode: 'create' });
@@ -324,6 +334,13 @@ async function handleRestartAll() {
           <Button
             type="link"
             size="small"
+            :icon="h(LucideEye)"
+            :title="$t('scheduler.page.history.openButton')"
+            @click.stop="handleHistory(row)"
+          />
+          <Button
+            type="link"
+            size="small"
             :icon="h(LucidePencil)"
             :title="$t('scheduler.page.task.edit')"
             @click.stop="handleEdit(row)"
@@ -347,5 +364,6 @@ async function handleRestartAll() {
     </Grid>
 
     <TaskDrawerComponent />
+    <HistoryDrawerComponent />
   </Page>
 </template>
