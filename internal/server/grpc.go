@@ -42,6 +42,7 @@ func NewGRPCServer(
 	taskSvc *service.TaskService,
 	taskTypeSvc *service.TaskTypeService,
 	backupSvc *service.BackupService,
+	sqlBackupSvc *service.SqlBackupService,
 ) *grpc.Server {
 	cfg := ctx.GetConfig()
 	l := ctx.NewLoggerHelper("scheduler/grpc")
@@ -118,6 +119,7 @@ func NewGRPCServer(
 
 	// Register backup service (from buf.build/go-tangra/backup proto)
 	backupV1.RegisterBackupServiceServer(srv, backupSvc)
+	commonV1.RegisterBackupServiceServer(srv, sqlBackupSvc)
 
 	return srv
 }

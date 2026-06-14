@@ -21,7 +21,7 @@ import (
 
 // initApp initializes the Wire provider entry for the kratos application
 func initApp(context *bootstrap.Context) (*kratos.App, func(), error) {
-	v, err := cert.NewCertManager(context)
+	certManager, err := cert.NewCertManager(context)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -46,7 +46,8 @@ func initApp(context *bootstrap.Context) (*kratos.App, func(), error) {
 	remoteExecutor := executor.ProvideRemoteExecutor(context, taskTypeRegistry, moduleConnPool, compositeExecutionRecorder)
 	taskTypeService := service.NewTaskTypeService(context, taskTypeRegistry, taskTypeRepo, remoteExecutor)
 	backupService := service.NewBackupService(context, entClient)
-	grpcServer := server.NewGRPCServer(context, v, collector, taskService, taskTypeService, backupService)
+	sqlBackupService := service.NewSqlBackupService(context)
+	grpcServer := server.NewGRPCServer(context, certManager, collector, taskService, taskTypeService, backupService, sqlBackupService)
 	httpServer := server.NewHTTPServer(context)
 	asynqServer, err := server.NewAsynqServer(context, taskService, taskTypeService, remoteExecutor, taskTypeRegistry)
 	if err != nil {

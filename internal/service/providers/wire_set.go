@@ -19,6 +19,7 @@ var ProviderSet = wire.NewSet(
 	service.NewTaskService,
 	service.NewTaskTypeService,
 	service.NewBackupService,
+	service.NewSqlBackupService,
 	data.NewCompositeExecutionRecorder,
 	executor.NewTaskTypeRegistry,
 	executor.ProvideRemoteExecutor,
