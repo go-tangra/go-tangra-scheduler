@@ -9,7 +9,7 @@ require (
 	github.com/go-kratos/kratos/v2 v2.9.2
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/go-tangra/go-tangra-backup v1.5.1-0.20260411074925-4f5ad1406557
-	github.com/go-tangra/go-tangra-common v1.19.0
+	github.com/go-tangra/go-tangra-common v1.20.0
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.7.0
 	github.com/hibiken/asynq v0.26.0
