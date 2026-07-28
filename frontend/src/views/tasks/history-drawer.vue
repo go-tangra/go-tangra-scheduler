@@ -4,6 +4,8 @@ import { computed, ref, watch } from 'vue';
 import { useVbenDrawer } from 'shell/vben/common-ui';
 import { $t } from 'shell/locales';
 
+import { formatDateTime } from '../../datetime';
+
 import {
   Alert,
   Button,
@@ -108,7 +110,7 @@ function statusColor(status: string | undefined) {
 
 function formatTimestamp(ts: string | undefined): string {
   if (!ts) return '—';
-  return new Date(ts).toLocaleString();
+  return formatDateTime(ts);
 }
 
 function formatDuration(ms: number | string | undefined): string {
