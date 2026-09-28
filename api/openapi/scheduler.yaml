@@ -67,7 +67,7 @@ components:
         module: { type: string }
         display_name: { type: string }
         description: { type: string }
-        payload_schema: { description: 'JSON Schema of the payload object (null = any object)' }
+        payload_schema: { type: [object, 'null'], description: 'JSON Schema of the payload object (null = any object)' }
         default_cron: { type: string }
         default_max_retries: { type: integer }
         scope: { $ref: '#/components/schemas/Scope' }
