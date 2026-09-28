@@ -1,92 +1,61 @@
-# Makefile for Scheduler Service
+GO        ?= go
+PKGS      := $(shell $(GO) list ./... | grep -v /ui/)
+COVER_OUT := coverage.out
 
-include ../../../app.mk
+.PHONY: lint vuln test test-integration cover fuzz generate ui-build build build-ui image
 
-# Scheduler-specific variables
-SCHEDULER_IMAGE_NAME ?= menta2l/scheduler-service
-SCHEDULER_IMAGE_TAG ?= $(VERSION)
-DOCKER_REGISTRY ?=
+lint:
+	$(GO) vet $(PKGS)
+	staticcheck $(PKGS)
+	gosec -quiet -exclude-generated -exclude-dir=ui -exclude-dir=sdk ./...
 
-# Build the server binary
-.PHONY: build-server
-build-server:
-	@echo "Building Scheduler server..."
-	@go build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o ./bin/scheduler-server ./cmd/server
+vuln:
+	./scripts/vulncheck.sh
+	cd sdk && ../scripts/vulncheck.sh
 
-# Build Docker image
-.PHONY: docker
-docker:
-	@echo "Building Docker image $(SCHEDULER_IMAGE_NAME):$(SCHEDULER_IMAGE_TAG)..."
-	@docker build \
-		-t $(SCHEDULER_IMAGE_NAME):$(SCHEDULER_IMAGE_TAG) \
-		-t $(SCHEDULER_IMAGE_NAME):latest \
-		--build-arg APP_VERSION=$(VERSION) \
-		-f ./Dockerfile \
-		../../../
-
-# Build Docker image with custom registry
-.PHONY: docker-tag
-docker-tag: docker
-ifdef DOCKER_REGISTRY
-	@echo "Tagging image for registry $(DOCKER_REGISTRY)..."
-	@docker tag $(SCHEDULER_IMAGE_NAME):$(SCHEDULER_IMAGE_TAG) $(DOCKER_REGISTRY)/$(SCHEDULER_IMAGE_NAME):$(SCHEDULER_IMAGE_TAG)
-	@docker tag $(SCHEDULER_IMAGE_NAME):latest $(DOCKER_REGISTRY)/$(SCHEDULER_IMAGE_NAME):latest
-endif
-
-# Push Docker image to registry
-.PHONY: docker-push
-docker-push: docker-tag
-ifdef DOCKER_REGISTRY
-	@echo "Pushing image to $(DOCKER_REGISTRY)..."
-	@docker push $(DOCKER_REGISTRY)/$(SCHEDULER_IMAGE_NAME):$(SCHEDULER_IMAGE_TAG)
-	@docker push $(DOCKER_REGISTRY)/$(SCHEDULER_IMAGE_NAME):latest
-else
-	@echo "Pushing image to Docker Hub..."
-	@docker push $(SCHEDULER_IMAGE_NAME):$(SCHEDULER_IMAGE_TAG)
-	@docker push $(SCHEDULER_IMAGE_NAME):latest
-endif
-
-# Run the server locally
-.PHONY: run-server
-run-server:
-	@go run ./cmd/server -c ./configs
-
-# Generate ent schema
-.PHONY: ent
-ent:
-ifneq ("$(wildcard ./internal/data/ent)","")
-	@ent generate \
-		--feature sql/modifier \
-		--feature sql/upsert \
-		--feature sql/lock \
-		./internal/data/ent/schema
-endif
-
-# Generate wire dependencies
-.PHONY: wire
-wire:
-	@cd ./cmd/server && wire
-
-# Run tests
-.PHONY: test
 test:
-	@go test -v ./...
+	$(GO) test -race -count=1 $(PKGS)
 
-# Run tests with coverage
-.PHONY: test-cover
-test-cover:
-	@go test -v -coverprofile=coverage.out ./...
-	@go tool cover -html=coverage.out -o coverage.html
-	@echo "Coverage report generated: coverage.html"
+# Docker-backed suites (testcontainers) carry the integration build tag next to
+# the code they exercise.
+test-integration:
+	$(GO) test -race -count=1 -tags integration ./internal/repo/repodb/
 
-# Clean build artifacts
-.PHONY: clean
-clean:
-	@rm -rf ./bin
-	@rm -f coverage.out coverage.html
-	@echo "Clean complete!"
+# Generated protobuf, SQL bindings (internal/store, */*db), wiring (internal/app,
+# cmd) and test packages are exercised by the tagged integration suite and are
+# excluded from the unit gate on purpose.
+COVERPKG := $(shell $(GO) list ./... | grep -v -E '/api/|/internal/store$$|db$$|/internal/app$$|/valkeykv$$|/cmd/|/tests/|/ui|/internal/stream' | paste -sd, -)
 
-# Generate all (ent + wire + proto)
-.PHONY: generate
-generate: ent wire
-	@echo "Generation complete!"
+cover:
+	$(GO) test -count=1 -coverprofile=$(COVER_OUT) -coverpkg=$(COVERPKG) $(PKGS)
+	./scripts/coverage-gate.sh $(COVER_OUT)
+
+# Every fuzz target runs for FUZZTIME (package:target pairs).
+FUZZTIME ?= 10s
+fuzz:
+	@set -e; for f in $$(grep -rlE '^func Fuzz' --include='*_test.go' internal); do \
+		pkg=./$$(dirname $$f); \
+		for name in $$(grep -hoE '^func (Fuzz[A-Za-z0-9_]+)' $$f | sed 's/func //'); do \
+			echo "fuzz $$pkg $$name"; \
+			$(GO) test -run '^$$' -fuzz "^$$name$$" -fuzztime $(FUZZTIME) $$pkg; \
+		done; \
+	done
+
+generate:
+	cd sdk && buf generate
+
+# Build the federated UI remote (produces ui/dist consumed by the -tags ui build).
+ui-build:
+	cd ui && npm ci && npm run build
+
+# Build the service binary without the embedded UI.
+build:
+	$(GO) build -o bin/schedulersvc ./cmd/schedulersvc
+
+# Build the service binary with the embedded UI remote (requires ui-build first).
+build-ui: ui-build
+	$(GO) build -tags "ui" -o bin/schedulersvc ./cmd/schedulersvc
+
+# Build the container image; NODE_AUTH_TOKEN (read:packages) installs @go-tangra/ui.
+image:
+	DOCKER_BUILDKIT=1 docker buildx build --secret id=npm_token,env=NODE_AUTH_TOKEN -t go-tangra-scheduler:dev .

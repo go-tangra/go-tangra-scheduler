@@ -1,0 +1,471 @@
+openapi: 3.1.0
+info:
+  title: Scheduler API
+  version: 1.0.0
+  description: >
+    Central scheduler of the go-tangra v4 platform (feature 026): task types
+    registered by modules over the mesh, periodic / delayed / wait-for-result
+    tasks with JSON-Schema-validated payloads, execution history with retries,
+    control actions, an overview, a live event stream and backup.
+    Gateway-proxied under /api/scheduler. Every route declares an
+    x-freya-permission (or x-freya-public); mutating routes carry the platform
+    CSRF header. Tasks belong to the caller's tenant; platform administrators
+    additionally see every tenant and are the only ones who may use
+    platform-scoped task types. Foreign rows answer 404 not_found.
+servers:
+  - url: /
+components:
+  parameters:
+    csrf:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      schema: { type: string, maxLength: 128 }
+    id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      example: '018f3a2b-0000-7000-8000-000000000001'
+    page:
+      name: page
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100000 }
+    pageSize:
+      name: page_size
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100 }
+  schemas:
+    Error:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          description: >
+            unauthenticated | forbidden | not_found | malformed_body | body_too_large |
+            validation_failed | conflict | temporarily_unavailable | not_implemented |
+            invalid_payload | payload_too_large | payload_too_deep | invalid_cron |
+            cron_too_frequent | invalid_timezone | invalid_options | invalid_run_at |
+            type_unavailable | name_taken | not_periodic | run_in_progress |
+            not_cancellable | invalid_backup
+        detail: { type: object }
+    Kind: { type: string, enum: [periodic, delayed, wait_result] }
+    TaskStatus: { type: string, enum: [active, completed, cancelled] }
+    TaskState: { type: string, enum: [enabled, stopped, completed, cancelled] }
+    Validity: { type: string, enum: [ok, type_unavailable, payload_invalid] }
+    Scope: { type: string, enum: [tenant, platform] }
+    ExecutionStatus: { type: string, enum: [queued, running, succeeded, failed, skipped, timed_out, cancelled] }
+    Trigger: { type: string, enum: [schedule, manual, catch_up] }
+    TaskType:
+      type: object
+      required: [name, module, display_name, scope, available]
+      properties:
+        name: { type: string }
+        module: { type: string }
+        display_name: { type: string }
+        description: { type: string }
+        payload_schema: { type: [object, 'null'], description: 'JSON Schema of the payload object (null = any object)' }
+        default_cron: { type: string }
+        default_max_retries: { type: integer }
+        scope: { $ref: '#/components/schemas/Scope' }
+        available: { type: boolean }
+        registered_at: { type: string, format: date-time }
+        unregistered_at: { type: [string, 'null'], format: date-time }
+    TaskTypeList:
+      type: object
+      required: [items]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/TaskType' } }
+    Task:
+      type: object
+      required: [id, tenant_id, name, type_name, module, kind, payload, enabled, status, state, validity]
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        name: { type: string }
+        type_name: { type: string }
+        type_display_name: { type: string }
+        module: { type: string }
+        scope: { $ref: '#/components/schemas/Scope' }
+        kind: { $ref: '#/components/schemas/Kind' }
+        payload: { type: object }
+        cron: { type: string }
+        timezone: { type: string }
+        run_at: { type: [string, 'null'], format: date-time }
+        enabled: { type: boolean }
+        status: { $ref: '#/components/schemas/TaskStatus' }
+        state: { $ref: '#/components/schemas/TaskState' }
+        validity: { $ref: '#/components/schemas/Validity' }
+        validity_message: { type: string }
+        max_retries: { type: integer }
+        timeout_seconds: { type: integer }
+        catch_up: { type: boolean }
+        remark: { type: string }
+        next_run_at: { type: [string, 'null'], format: date-time }
+        last_run_at: { type: [string, 'null'], format: date-time }
+        last_status: { type: string }
+        last_message: { type: string }
+        run_count: { type: integer }
+        missed_count: { type: integer }
+        created_by: { type: string }
+        updated_by: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        execution_id: { type: string, format: uuid, description: 'wait_result create only: the first attempt to follow' }
+    TaskPage:
+      type: object
+      required: [items, total]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Task' } }
+        total: { type: integer }
+    TaskCreate:
+      type: object
+      additionalProperties: false
+      required: [name, type_name, kind]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        type_name: { type: string, minLength: 3, maxLength: 128 }
+        kind: { $ref: '#/components/schemas/Kind' }
+        payload: { type: object }
+        cron: { type: string, maxLength: 128 }
+        timezone: { type: string, maxLength: 64 }
+        run_at: { type: [string, 'null'], format: date-time }
+        delay_seconds: { type: integer, minimum: 0, maximum: 31536000 }
+        enabled: { type: boolean }
+        remark: { type: string, maxLength: 1000 }
+        max_retries: { type: integer, minimum: 0, maximum: 10 }
+        timeout_seconds: { type: integer, minimum: 1, maximum: 86400 }
+        catch_up: { type: boolean }
+    TaskUpdate:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        payload: { type: object }
+        cron: { type: string, maxLength: 128 }
+        timezone: { type: string, maxLength: 64 }
+        run_at: { type: [string, 'null'], format: date-time }
+        enabled: { type: boolean }
+        remark: { type: string, maxLength: 1000 }
+        max_retries: { type: integer, minimum: 0, maximum: 10 }
+        timeout_seconds: { type: integer, minimum: 1, maximum: 86400 }
+        catch_up: { type: boolean }
+    Execution:
+      type: object
+      required: [id, task_id, occurrence_id, type_name, module, status, attempt, max_attempts, trigger]
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        task_id: { type: string, format: uuid }
+        task_name: { type: string }
+        occurrence_id: { type: string, format: uuid }
+        type_name: { type: string }
+        module: { type: string }
+        trigger: { $ref: '#/components/schemas/Trigger' }
+        triggered_by: { type: string }
+        scheduled_at: { type: string, format: date-time }
+        due_at: { type: string, format: date-time }
+        started_at: { type: [string, 'null'], format: date-time }
+        finished_at: { type: [string, 'null'], format: date-time }
+        duration_ms: { type: integer }
+        attempt: { type: integer }
+        max_attempts: { type: integer }
+        status: { $ref: '#/components/schemas/ExecutionStatus' }
+        message: { type: string }
+        result: { description: 'module result: JSON value, or a string when not JSON (single execution only)' }
+        result_truncated: { type: boolean }
+    ExecutionPage:
+      type: object
+      required: [items, total, counts]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Execution' } }
+        total: { type: integer }
+        counts:
+          type: object
+          properties:
+            succeeded: { type: integer }
+            failed: { type: integer }
+            other: { type: integer }
+    RunAccepted:
+      type: object
+      required: [execution_id]
+      properties:
+        execution_id: { type: string, format: uuid }
+    BulkResult:
+      type: object
+      required: [affected]
+      properties:
+        affected: { type: integer }
+    CronPreview:
+      type: object
+      required: [next]
+      properties:
+        next: { type: array, items: { type: string, format: date-time } }
+    Overview:
+      type: object
+      properties:
+        tasks:
+          type: object
+          properties:
+            enabled: { type: integer }
+            stopped: { type: integer }
+            completed: { type: integer }
+            cancelled: { type: integer }
+            type_unavailable: { type: integer }
+            payload_invalid: { type: integer }
+        runs_24h: { type: integer }
+        failures_24h: { type: integer }
+        next_due:
+          type: array
+          items:
+            type: object
+            properties:
+              task_id: { type: string }
+              name: { type: string }
+              next_run_at: { type: string, format: date-time }
+        failing:
+          type: array
+          items:
+            type: object
+            properties:
+              task_id: { type: string }
+              name: { type: string }
+              last_status: { type: string }
+              last_message: { type: string }
+              last_run_at: { type: [string, 'null'], format: date-time }
+  responses:
+    Error:
+      description: refusal
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+paths:
+  /api/scheduler/v1/health:
+    get:
+      operationId: health
+      x-freya-public: true
+      responses:
+        '200': { description: 'component status', content: { application/json: { schema: { type: object } } } }
+  # ---- Task types
+  /api/scheduler/v1/task-types:
+    get:
+      operationId: listTaskTypes
+      x-freya-permission: 'scheduler:read'
+      parameters:
+        - { name: module, in: query, schema: { type: string, maxLength: 63 } }
+        - { name: available, in: query, schema: { type: boolean } }
+      responses:
+        '200': { description: 'task types visible to the caller', content: { application/json: { schema: { $ref: '#/components/schemas/TaskTypeList' } } } }
+        default: { $ref: '#/components/responses/Error' }
+  /api/scheduler/v1/modules/{module}/unregister:
+    post:
+      operationId: retireModule
+      description: Platform administrators mark every type of a removed module unavailable.
+      x-freya-permission: 'tasks:manage'
+      parameters:
+        - { $ref: '#/components/parameters/csrf' }
+        - { name: module, in: path, required: true, schema: { type: string, pattern: '^[a-z0-9-]{1,63}$' } }
+      responses:
+        '200': { description: 'types retired', content: { application/json: { schema: { $ref: '#/components/schemas/BulkResult' } } } }
+        default: { $ref: '#/components/responses/Error' }
+  /api/scheduler/v1/cron/preview:
+    get:
+      operationId: previewCron
+      x-freya-permission: 'scheduler:read'
+      parameters:
+        - { name: expression, in: query, required: true, schema: { type: string, minLength: 1, maxLength: 128 } }
+        - { name: timezone, in: query, schema: { type: string, maxLength: 64 } }
+        - { name: count, in: query, schema: { type: integer, minimum: 1, maximum: 10 } }
+      responses:
+        '200': { description: 'next run times', content: { application/json: { schema: { $ref: '#/components/schemas/CronPreview' } } } }
+        default: { $ref: '#/components/responses/Error' }
+  # ---- Tasks
+  /api/scheduler/v1/tasks:
+    get:
+      operationId: listTasks
+      x-freya-permission: 'scheduler:read'
+      parameters:
+        - { $ref: '#/components/parameters/page' }
+        - { $ref: '#/components/parameters/pageSize' }
+        - { name: kind, in: query, schema: { $ref: '#/components/schemas/Kind' } }
+        - { name: state, in: query, schema: { $ref: '#/components/schemas/TaskState' } }
+        - { name: validity, in: query, schema: { $ref: '#/components/schemas/Validity' } }
+        - { name: type, in: query, schema: { type: string, maxLength: 128 } }
+        - { name: q, in: query, schema: { type: string, maxLength: 200 } }
+        - { name: tenant_id, in: query, schema: { type: string, format: uuid }, description: 'platform administrators only' }
+      responses:
+        '200': { description: 'page of tasks', content: { application/json: { schema: { $ref: '#/components/schemas/TaskPage' } } } }
+        default: { $ref: '#/components/responses/Error' }
+    post:
+      operationId: createTask
+      x-freya-permission: 'tasks:manage'
+      parameters: [{ $ref: '#/components/parameters/csrf' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/TaskCreate' } } } }
+      responses:
+        '201': { description: created, content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } } }
+        default: { $ref: '#/components/responses/Error' }
+  /api/scheduler/v1/tasks/{id}:
+    get:
+      operationId: getTask
+      x-freya-permission: 'scheduler:read'
+      parameters: [{ $ref: '#/components/parameters/id' }]
+      responses:
+        '200': { description: task, content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } } }
+        default: { $ref: '#/components/responses/Error' }
+    put:
+      operationId: updateTask
+      x-freya-permission: 'tasks:manage'
+      parameters: [{ $ref: '#/components/parameters/csrf' }, { $ref: '#/components/parameters/id' }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/TaskUpdate' } } } }
+      responses:
+        '200': { description: updated, content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } } }
+        default: { $ref: '#/components/responses/Error' }
+    delete:
+      operationId: deleteTask
+      x-freya-permission: 'tasks:delete'
+      parameters: [{ $ref: '#/components/parameters/csrf' }, { $ref: '#/components/parameters/id' }]
+      responses:
+        '204': { description: deleted }
+        default: { $ref: '#/components/responses/Error' }
+  /api/scheduler/v1/tasks/{id}/start:
+    post:
+      operationId: startTask
+      x-freya-permission: 'tasks:control'
+      parameters: [{ $ref: '#/components/parameters/csrf' }, { $ref: '#/components/parameters/id' }]
+      responses:
+        '200': { description: started, content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } } }
+        default: { $ref: '#/components/responses/Error' }
+  /api/scheduler/v1/tasks/{id}/stop:
+    post:
+      operationId: stopTask
+      x-freya-permission: 'tasks:control'
+      parameters: [{ $ref: '#/components/parameters/csrf' }, { $ref: '#/components/parameters/id' }]
+      responses:
+        '200': { description: stopped, content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } } }
+        default: { $ref: '#/components/responses/Error' }
+  /api/scheduler/v1/tasks/{id}/restart:
+    post:
+      operationId: restartTask
+      x-freya-permission: 'tasks:control'
+      parameters: [{ $ref: '#/components/parameters/csrf' }, { $ref: '#/components/parameters/id' }]
+      responses:
+        '200': { description: restarted, content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } } }
+        default: { $ref: '#/components/responses/Error' }
+  /api/scheduler/v1/tasks/{id}/run:
+    post:
+      operationId: runTask
+      description: Run now (any task) or run again (a completed one-shot task). Does not change the schedule.
+      x-freya-permission: 'tasks:control'
+      parameters: [{ $ref: '#/components/parameters/csrf' }, { $ref: '#/components/parameters/id' }]
+      responses:
+        '202': { description: queued, content: { application/json: { schema: { $ref: '#/components/schemas/RunAccepted' } } } }
+        default: { $ref: '#/components/responses/Error' }
+  /api/scheduler/v1/tasks/{id}/cancel:
+    post:
+      operationId: cancelTask
+      x-freya-permission: 'tasks:control'
+      parameters: [{ $ref: '#/components/parameters/csrf' }, { $ref: '#/components/parameters/id' }]
+      responses:
+        '200': { description: cancelled, content: { application/json: { schema: { $ref: '#/components/schemas/Task' } } } }
+        default: { $ref: '#/components/responses/Error' }
+  /api/scheduler/v1/tasks/bulk/{action}:
+    post:
+      operationId: bulkControl
+      description: Start, stop or restart every periodic task in the caller's scope.
+      x-freya-permission: 'tasks:control'
+      parameters:
+        - { $ref: '#/components/parameters/csrf' }
+        - { name: action, in: path, required: true, schema: { type: string, enum: [start, stop, restart] } }
+      responses:
+        '200': { description: 'tasks affected', content: { application/json: { schema: { $ref: '#/components/schemas/BulkResult' } } } }
+        default: { $ref: '#/components/responses/Error' }
+  # ---- Executions
+  /api/scheduler/v1/executions:
+    get:
+      operationId: listExecutions
+      x-freya-permission: 'scheduler:read'
+      parameters:
+        - { $ref: '#/components/parameters/page' }
+        - { $ref: '#/components/parameters/pageSize' }
+        - { name: task_id, in: query, schema: { type: string, format: uuid } }
+        - { name: status, in: query, style: form, explode: true, schema: { type: array, maxItems: 7, items: { $ref: '#/components/schemas/ExecutionStatus' } } }
+        - { name: failed_only, in: query, schema: { type: boolean } }
+        - { name: trigger, in: query, schema: { $ref: '#/components/schemas/Trigger' } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+      responses:
+        '200': { description: 'page of attempts (newest first)', content: { application/json: { schema: { $ref: '#/components/schemas/ExecutionPage' } } } }
+        default: { $ref: '#/components/responses/Error' }
+  /api/scheduler/v1/executions/{id}:
+    get:
+      operationId: getExecution
+      x-freya-permission: 'scheduler:read'
+      parameters: [{ $ref: '#/components/parameters/id' }]
+      responses:
+        '200': { description: 'one attempt with its result', content: { application/json: { schema: { $ref: '#/components/schemas/Execution' } } } }
+        default: { $ref: '#/components/responses/Error' }
+  # ---- Overview, stream, backup
+  /api/scheduler/v1/overview:
+    get:
+      operationId: overview
+      x-freya-permission: 'scheduler:read'
+      responses:
+        '200': { description: 'figures for the caller''s scope', content: { application/json: { schema: { $ref: '#/components/schemas/Overview' } } } }
+        default: { $ref: '#/components/responses/Error' }
+  /api/scheduler/v1/stream:
+    get:
+      operationId: streamEvents
+      description: >-
+        Long-lived SSE stream of scheduler.execution / scheduler.task events of the
+        caller's tenant (ids and status only). The module closes it at 290 s and the
+        client resumes with last_id.
+      x-freya-permission: 'scheduler:read'
+      x-freya-timeout-seconds: 300
+      parameters: [{ name: last_id, in: query, schema: { type: string, maxLength: 64 } }]
+      responses:
+        '200': { description: 'SSE stream', content: { text/event-stream: { schema: { type: string } } } }
+        default: { $ref: '#/components/responses/Error' }
+  /api/scheduler/v1/backup/export:
+    post:
+      operationId: exportBackup
+      description: >-
+        Export of the caller's tenant (tasks, executions, referenced task types).
+        all=true exports every tenant and is platform-admin only.
+      x-freya-permission: 'backup:manage'
+      x-freya-timeout-seconds: 120
+      parameters: [{ $ref: '#/components/parameters/csrf' }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                all: { type: boolean }
+      responses:
+        '200': { description: 'backup document', content: { application/json: { schema: { type: object } } } }
+        default: { $ref: '#/components/responses/Error' }
+  /api/scheduler/v1/backup/import:
+    post:
+      operationId: importBackup
+      description: >-
+        Loads a backup into the caller's tenant (existing ids are skipped). Task
+        types are restored only for platform administrators, only when absent and
+        always as unavailable.
+      x-freya-permission: 'backup:manage'
+      x-freya-max-body-bytes: 33554432
+      x-freya-timeout-seconds: 300
+      parameters: [{ $ref: '#/components/parameters/csrf' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: 'import summary', content: { application/json: { schema: { type: object } } } }
+        default: { $ref: '#/components/responses/Error' }

@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+// Service-to-service contract of the scheduler module (feature 026). Reached
+// only over the Freya SPIFFE mTLS channel; nothing here is proxied by the
+// gateway.
+//
+//   - Registration is served by the scheduler and called by the modules that
+//     execute tasks. The owning module is the caller's verified SPIFFE
+//     identity (spiffe://<td>/svc/<module>), never a request field; every type
+//     name must start with "<module>:". The scheduler's policy.yaml lists the
+//     modules allowed to call it.
+//   - TaskExecutor is served by every module that executes tasks and called by
+//     the scheduler only: each module's policy.yaml allows
+//     spiffe://<td>/svc/scheduler (and nobody else) to call ExecuteTask, and
+//     the module re-checks the peer (sdk pkg/taskexec).
+//
+// The messages keep the fields of the v3 go-tangra-common contract
+// (common.service.v1) where their meaning is unchanged; v4 tenants are UUIDs.
+package scheduler.v1;
+
+option go_package = "github.com/go-tangra/go-tangra-scheduler/sdk/v4/api/proto/scheduler/v1;schedulerv1";
+
+import "google/protobuf/timestamp.proto";
+
+service Registration {
+  // RegisterTaskTypes declares (or updates) the task types the calling module
+  // executes. Idempotent; a registered type becomes available again. Refused
+  // as a whole (PERMISSION_DENIED) when a name is outside the caller's
+  // namespace or owned by another module, and (INVALID_ARGUMENT) when a
+  // descriptor is malformed (limits in research D4).
+  rpc RegisterTaskTypes(RegisterTaskTypesRequest) returns (RegisterTaskTypesResponse);
+  // UnregisterTaskTypes marks every type of the calling module unavailable.
+  // Tasks are kept (shown "type unavailable", occurrences skipped) until the
+  // module registers again.
+  rpc UnregisterTaskTypes(UnregisterTaskTypesRequest) returns (UnregisterTaskTypesResponse);
+}
+
+service TaskExecutor {
+  // ExecuteTask runs one attempt of a task occurrence in the owning module.
+  // The module scopes all work to tenant_id (empty only for its own
+  // platform-scoped types), validates the payload again and answers
+  // promptly: long work is queued and reported in message. Transport errors
+  // and success=false without permanent_failure are retried by the scheduler.
+  rpc ExecuteTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);
+}
+
+// Scope of a task type.
+enum TaskScope {
+  TASK_SCOPE_UNSPECIFIED = 0; // treated as TENANT
+  TASK_SCOPE_TENANT = 1;      // tasks belong to a tenant and run for it
+  TASK_SCOPE_PLATFORM = 2;    // platform administrators only; runs without a tenant
+}
+
+// TaskTypeDescriptor describes one executable task type.
+message TaskTypeDescriptor {
+  // Globally unique name "<module>:<action>", action ^[a-z][a-z0-9-]{0,62}$.
+  string task_type = 1;
+  string display_name = 2;    // 1..200
+  string description = 3;     // <= 2000
+  string payload_schema = 4;  // JSON Schema (object), <= 64 KiB; empty = any JSON object
+  string default_cron = 5;    // 5-field cron or empty (no suggested schedule)
+  int32 default_max_retry = 6; // 0..10
+  TaskScope scope = 7;
+}
+
+message RegisterTaskTypesRequest {
+  reserved 1;
+  reserved "module_id"; // v3: the owner is the caller's SPIFFE identity
+  repeated TaskTypeDescriptor task_types = 2; // 1..50
+}
+
+message RegisterTaskTypesResponse {
+  int32 registered_count = 1;
+  string message = 2;
+  int32 revalidated_tasks = 3; // tasks re-checked because a schema changed
+}
+
+message UnregisterTaskTypesRequest {
+  reserved 1;
+  reserved "module_id";
+}
+
+message UnregisterTaskTypesResponse {
+  string message = 1;
+  int32 unregistered_count = 2;
+}
+
+// ExecuteTaskRequest carries everything the module needs for one attempt.
+message ExecuteTaskRequest {
+  string execution_id = 1;  // uuid, unique per attempt
+  string task_type = 2;
+  bytes payload = 3;        // JSON object, <= 64 KiB, validated by the scheduler against the type schema
+  int32 attempt = 4;        // 1-based
+  int32 max_attempts = 5;
+  reserved 10; // v3 uint32 tenant_id (never filled); replaced by tenant_id = 12
+  google.protobuf.Timestamp scheduled_at = 11; // intended occurrence time, not dispatch time
+  string tenant_id = 12;    // uuid; empty only for platform-scoped types
+  string task_id = 13;      // uuid of the scheduler task
+  string occurrence_id = 14; // uuid shared by the attempts of one occurrence (idempotency key)
+}
+
+// ExecuteTaskResponse reports the outcome of one attempt.
+message ExecuteTaskResponse {
+  bool success = 1;
+  string message = 2;           // shown in the history, <= 4 KiB (longer is cut)
+  bytes result_data = 3;        // optional JSON, <= 64 KiB (longer is truncated and flagged)
+  bool permanent_failure = 4;   // do not retry even if attempts remain
+}
