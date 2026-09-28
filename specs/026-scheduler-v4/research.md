@@ -312,3 +312,25 @@ The cron parser is in-repository (D2). The SDK depends on grpc + protobuf only.
 | **D**enial of service | Very frequent cron or retry storms; oversized/deep payloads; many registrations. | 1-minute minimum interval, retries ≤ 10 with exponential backoff, bounded workers, payload/result/message/descriptor limits, depth ≤ 32, JSON Schema compiled without remote loading (D2, D4, D6). |
 | **E**levation of privilege | Tenant admin creates or controls a platform-scoped task. | Platform-scoped types invisible and refused unless platform-admin; server-side permission on every route (D5). |
 | **E**levation of privilege | Executing module trusts the tenant blindly. | Module validates the tenant UUID and the payload again and scopes all work to that tenant; empty tenant only for its own platform-scoped types (SR-002). |
+
+## Security review (T069, after implementation)
+
+- Registration owner = `authn` peer service name with the configured trust domain
+  (`internal/grpcapi`); foreign namespace, foreign owner and foreign trust domain are
+  refused and audited (`internal/grpcapi` + `internal/registry` tests, 100 %).
+- Executors in ipam/lcm/notification are always registered but admit only
+  `svc/scheduler` of their own trust domain (policy rule `scheduler-execute` + SDK
+  `taskexec` caller check, fail closed); tenant must be a UUID.
+- Cross-tenant: RLS integration suite (two tenants, raw SQL) + contract tests (404);
+  the system scope is used only after `IsPlatformAdmin` (`internal/tasks`).
+- Platform-scoped types hidden/refused for non-platform-admins (contract tests); backup
+  never forges available types or moves platform tasks into a tenant.
+- Leak test: contract tests capture slog, audit and events and assert a payload marker
+  never appears; metrics labels are closed vocabularies.
+- Gateway routing: `/tasks/bulk/{action}` and `/tasks/{id}/{start|stop|restart}` overlap
+  in shape; the gateway (portal `internal/route/table.go` Match) tries the manifest's
+  sorted routes, where the literal `bulk` sorts first, and both carry `tasks:control`,
+  so a mismatch could not change the authorisation.
+- Residual: lcm recipients are configured addresses (auth exposes no e-mails, F14);
+  notification's per-sender rate limit (60/min) is shared by all tenants' scheduled
+  test e-mails (retryable when hit).
