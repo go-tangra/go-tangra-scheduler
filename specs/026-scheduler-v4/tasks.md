@@ -135,7 +135,7 @@ committed LAST ("TEMP" in the subject).
 ## Phase 9: Platform integration & polish
 
 - [ ] T063 [P] Tests: `internal/backup/backup_test.go` — export scope, import into caller tenant only, types only for platform admins as unavailable, size limit, malformed input; fuzz decode.
-- [ ] T064 `internal/backup/backup.go` + HTTP `GET/POST /backup`.
+- [ ] T064 `internal/backup/backup.go` + HTTP `POST /backup/export`, `POST /backup/import`.
 - [ ] T065 `deploy/policy.yaml`, `deploy/container.yaml` (stack-shaped example), `deploy/README.md` (ports, DB/role, policies, gateway allow-list, consumer rules).
 - [ ] T066 [P] `README.md`, `SECURITY.md` (reporting channel, threat notes).
 - [ ] T067 go-tangra `deploy/stack` on branch `026-scheduler`: `compose.yaml` (scheduler-token, scheduler service, valkey user, gateway allow `/api/scheduler`, consumer discovery), `configs/scheduler.yaml`, `init-db.sql` (database + `scheduler_app`), consumer configs (`scheduler` sections + `discovery.static.scheduler`, lcm `notification`), README.

@@ -240,8 +240,8 @@ recipient are dropped; strings ≤ 256 bytes). Payload values never appear (SR-0
 
 ## D10. Backup (FR-024)
 
-`GET /backup` exports the caller's scope (tenant; platform admin: optionally all) as
-JSON `{version, exported_at, task_types, tasks, executions}`; `POST /backup` imports it
+`POST /backup/export` exports the caller's scope (tenant; platform admin: optionally all) as
+JSON `{version, exported_at, task_types, tasks, executions}`; `POST /backup/import` imports it
 (`backup:manage`). Tasks and executions are restored into the caller's tenant only
 (ids kept, existing ids skipped, names made unique). Task types are restored only for
 platform administrators, only when absent, and always as `available=false` (a module

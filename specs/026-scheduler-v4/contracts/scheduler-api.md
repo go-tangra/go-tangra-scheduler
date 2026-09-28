@@ -28,8 +28,8 @@ Foreign-tenant and (for non-platform-admins) platform-scoped rows answer
 | GET | `/executions/{id}` | `scheduler:read` | one attempt with message and result |
 | GET | `/overview` | `scheduler:read` | US6 figures for the caller's scope |
 | GET | `/stream` | `scheduler:read` | SSE: `scheduler.execution` `{execution_id, task_id, status, attempt}` and `scheduler.task` `{task_id}` |
-| GET | `/backup` | `backup:manage` | export (JSON, ≤ `max_backup_bytes`) |
-| POST | `/backup` | `backup:manage` | import (`x-freya-max-body-bytes`), `?mode=merge` |
+| POST | `/backup/export` | `backup:manage` | export of the caller's tenant (`{all:true}` platform-admin only) |
+| POST | `/backup/import` | `backup:manage` | import into the caller's tenant (`x-freya-max-body-bytes` 32 MiB), existing ids skipped |
 
 ## Task (response)
 
