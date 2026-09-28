@@ -6,12 +6,15 @@ import federationConfig from '../../module-federation.config.ts?raw'
 
 describe('scheduler remote', () => {
   it('exports the module routes, all tagged with the scheduler module', () => {
-    expect(routes.map((r) => r.path)).toEqual(['/scheduler', '/scheduler/overview'])
+    expect(routes.map((r) => r.path)).toEqual(['/scheduler', '/scheduler/dashboard', '/scheduler/overview'])
     for (const r of routes) expect(r.meta?.module).toBe('scheduler')
     expect(nav()).toEqual([])
   })
+  it('the former overview path redirects to the dashboard', () => {
+    expect(routes.find((r) => r.path === '/scheduler/overview')?.redirect).toBe('/scheduler/dashboard')
+  })
   it('every route lazily resolves a component', async () => {
-    for (const r of routes) {
+    for (const r of routes.filter((x) => !x.redirect)) {
       const load = r.component as () => Promise<{ default: unknown }>
       expect((await load()).default).toBeTruthy()
     }

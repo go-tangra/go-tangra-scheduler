@@ -58,7 +58,7 @@ func TestManifestBuilds(t *testing.T) {
 	for _, n := range m.Nav {
 		titles = append(titles, n.Title+"|"+n.Path+"|"+n.Icon+"|"+n.Requires)
 	}
-	if strings.Join(titles, ",") != "Scheduler|/scheduler|mdi-calendar-clock|scheduler:read,Overview|/scheduler/overview|mdi-chart-timeline-variant|scheduler:read" {
+	if strings.Join(titles, ",") != "Scheduler|/scheduler|mdi-calendar-clock|scheduler:read,Dashboard|/scheduler/dashboard|mdi-view-dashboard-outline|scheduler:read" {
 		t.Fatalf("nav = %v", titles)
 	}
 	if m.Nav[0].Order != 980 || m.Nav[1].Order != 985 {

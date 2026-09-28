@@ -359,8 +359,8 @@ describe('overview', () => {
         failing: [{ task_id: 't2', name: 'Paused sweep', last_status: 'timed_out', last_message: 'no answer', last_run_at: '2026-09-28T02:00:00Z' }],
       },
     }))
-    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/scheduler', component: { render: () => null } }, { path: '/scheduler/overview', component: Overview }] })
-    await router.push('/scheduler/overview')
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/scheduler', component: { render: () => null } }, { path: '/scheduler/dashboard', component: Overview }] })
+    await router.push('/scheduler/dashboard')
     const w = mount(Overview, { global: { plugins: [router, withAbility(READER).plugins[0]] as never }, attachTo: document.body })
     await flushPromises()
     const tiles = w.find('[data-test="overview-tasks"]').text()

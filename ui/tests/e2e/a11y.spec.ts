@@ -6,7 +6,7 @@ import { base, signIn } from './helpers'
 // axe findings. Needs a full platform; skips without operator credentials.
 const password = process.env.E2E_OPERATOR_PASSWORD ?? ''
 const email = process.env.E2E_OPERATOR_EMAIL ?? 'ops@example.org'
-const routes = ['/scheduler', '/scheduler/overview']
+const routes = ['/scheduler', '/scheduler/dashboard']
 const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
 
 test.describe('scheduler accessibility', () => {

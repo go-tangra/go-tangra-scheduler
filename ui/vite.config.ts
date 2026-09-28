@@ -1,4 +1,5 @@
 import { fileURLToPath, URL } from 'node:url'
+import { searchForWorkspaceRoot } from 'vite'
 import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
@@ -13,7 +14,11 @@ export default defineConfig({
   base: '/m/scheduler/',
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   plugins: [vue(), tailwindcss(), breakpointSpecificity(), federation(remoteConfig)],
-  server: { proxy: { '/api': { target: 'https://localhost:8443', secure: false, changeOrigin: false } } },
+  server: {
+    proxy: { '/api': { target: 'https://localhost:8443', secure: false, changeOrigin: false } },
+    // The icon test reads the Go manifest's nav entries (only that directory).
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), fileURLToPath(new URL('../pkg/schedulermanifest', import.meta.url))] },
+  },
   build: { outDir: 'dist', emptyOutDir: true, sourcemap: false, target: 'esnext' },
   test: {
     environment: 'jsdom',

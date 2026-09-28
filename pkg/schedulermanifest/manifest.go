@@ -98,7 +98,7 @@ var Abilities = []gatewayclient.Ability{
 // Nav lists the navigation contributions.
 var Nav = []gatewayclient.NavEntry{
 	{Title: "Scheduler", Path: "/scheduler", Icon: "mdi-calendar-clock", Order: 980, Requires: "scheduler:read"},
-	{Title: "Overview", Path: "/scheduler/overview", Icon: "mdi-chart-timeline-variant", Order: 985, Requires: "scheduler:read"},
+	{Title: "Dashboard", Path: "/scheduler/dashboard", Icon: "mdi-view-dashboard-outline", Order: 985, Requires: "scheduler:read"},
 }
 
 // PermissionRefs lists "resource:action" for every declared permission.

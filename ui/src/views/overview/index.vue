@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Scheduler overview (US6): task counts by state and validity, runs and
+// Scheduler dashboard (US6): task counts by state and validity, runs and
 // failures in the last 24 hours, the next runs due and the failing tasks
 // (each linking to the task list filtered to it). Refreshed live.
 import { computed, onMounted, onUnmounted } from 'vue'
@@ -35,7 +35,7 @@ const color = (st?: string) => EXECUTION_STATUS_COLORS[st as keyof typeof EXECUT
 </script>
 
 <template>
-  <UiPage title="Scheduler overview">
+  <UiPage title="Scheduler dashboard">
     <template #badges><UiLiveIndicator :connected="live.connected" /></template>
     <template #actions>
       <UiButton variant="text" icon="mdi-refresh" icon-only label="Refresh" @click="store.load()" />
