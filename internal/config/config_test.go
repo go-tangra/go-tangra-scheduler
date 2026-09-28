@@ -156,3 +156,17 @@ func TestWarningsAndDurations(t *testing.T) {
 		t.Fatal("durations")
 	}
 }
+
+// The shipped example configuration loads and validates (dev opt-outs only).
+func TestDeployExampleValidates(t *testing.T) {
+	c, err := Load(filepath.Join("..", "..", "deploy", "container.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Validate(); err != nil {
+		t.Fatalf("deploy/container.yaml: %v", err)
+	}
+	if c.Server.GRPCAddr != "0.0.0.0:9905" || c.Server.HTTPAddr != "0.0.0.0:9906" || c.Admin.Addr != "127.0.0.1:9800" {
+		t.Fatalf("ports: %+v %+v", c.Server, c.Admin)
+	}
+}
