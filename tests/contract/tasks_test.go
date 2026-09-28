@@ -252,9 +252,9 @@ func TestControlOverHTTP(t *testing.T) {
 		t.Fatalf("cancel = %d %s", w.Code, w.Body)
 	}
 	// the bulk route resolves to /tasks/bulk/{action}, never /tasks/{id}/start
-	for action, want := range map[string]int{"stop": 1, "start": 1, "restart": 1} {
+	for _, action := range []string{"stop", "start", "restart"} {
 		w := h.do("POST", p+"/tasks/bulk/"+action, "admin-a", "")
-		if w.Code != 200 || decode[map[string]int](t, w)["affected"] != want {
+		if w.Code != 200 || decode[map[string]int](t, w)["affected"] != 1 {
 			t.Fatalf("bulk %s = %d %s", action, w.Code, w.Body)
 		}
 	}

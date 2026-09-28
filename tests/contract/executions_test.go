@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -41,7 +42,10 @@ func history(t *testing.T, h *harness) (string, string) {
 	}
 	now := h.clk.Now()
 	clock := func() time.Time { return now }
+	var mu sync.Mutex
 	e := engine.New(engine.Config{InstanceID: "it"}, engine.Deps{Store: h.st, Now: clock, Dispatcher: engine.DispatcherFunc(func(_ context.Context, a engine.Attempt) engine.Outcome {
+		mu.Lock()
+		defer mu.Unlock()
 		o := script[a.Exec.TaskID][0]
 		script[a.Exec.TaskID] = script[a.Exec.TaskID][1:]
 		return o
