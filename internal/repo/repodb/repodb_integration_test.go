@@ -376,7 +376,9 @@ func TestRepoDB(t *testing.T) {
 			t.Fatalf("wait_result = %+v %v", w, err)
 		}
 		e := engine.New(engine.Config{InstanceID: "e1"}, engine.Deps{Store: db, Now: clk.Now,
-			Dispatcher: engine.DispatcherFunc(func(context.Context, engine.Attempt) engine.Outcome { return engine.Outcome{Status: store.ExecSucceeded} })})
+			Dispatcher: engine.DispatcherFunc(func(context.Context, engine.Attempt) engine.Outcome {
+				return engine.Outcome{Status: store.ExecSucceeded}
+			})})
 		e.Cycle(ctx)
 		e.Wait()
 		got, _ := svc.Get(ctx, userA, w.ID)
