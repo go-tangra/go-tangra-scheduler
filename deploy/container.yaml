@@ -29,6 +29,7 @@ discovery:
     ipam: ["ipam:9985"]
     notification: ["notification:9943"]
     signing: ["signing:9915"]
+    hr: ["hr:9925"]
 limits: { max_request_bytes: 33620992 }
 db:
   dsn: postgres://scheduler_app:dev@timescaledb:5432/scheduler?sslmode=disable
