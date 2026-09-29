@@ -100,6 +100,7 @@ func InstanceID(configured string) string {
 
 // Build wires the service.
 func Build(ctx context.Context, cfg config.Config, o Options) (a *App, err error) {
+	authz.PlatformTenant = cfg.PlatformTenantID // its admins and owners act as platform administrators
 	a = &App{Cfg: cfg}
 	handler := o.Logger
 	if handler == nil {
