@@ -3,7 +3,7 @@
 # register their task types (the handler additionally limits each caller to its
 # own "<module>:" namespace, taken from its SPIFFE identity). The scheduler's
 # own outbound calls (auth, gateway, lcm enrolment, and
-# /scheduler.v1.TaskExecutor/ExecuteTask on ipam/lcm/notification) are allowed
+# /scheduler.v1.TaskExecutor/ExecuteTask on ipam/lcm/notification/signing/hr) are allowed
 # by the callees' policies ("scheduler-execute" rule in each executing module).
 # A new executing module is added to "modules-register".
 version: scheduler-dev-1
@@ -14,7 +14,7 @@ rules:
     operations: ["*"]
     effect: allow
   - id: modules-register
-    from: ["spiffe://example.org/svc/ipam", "spiffe://example.org/svc/lcm", "spiffe://example.org/svc/notification", "spiffe://example.org/svc/signing"]
+    from: ["spiffe://example.org/svc/ipam", "spiffe://example.org/svc/lcm", "spiffe://example.org/svc/notification", "spiffe://example.org/svc/signing", "spiffe://example.org/svc/hr"]
     to: ["scheduler"]
     operations: ["/scheduler.v1.Registration/RegisterTaskTypes", "/scheduler.v1.Registration/UnregisterTaskTypes"]
     effect: allow
