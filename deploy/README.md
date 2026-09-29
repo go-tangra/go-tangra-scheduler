@@ -54,7 +54,7 @@ replica's attempts time out and are retried. History older than
 ## Mesh policies
 
 `deploy/policy.yaml` (this repository): the gateway forwards everything; only
-`svc/ipam`, `svc/lcm` and `svc/notification` may call
+`svc/ipam`, `svc/lcm`, `svc/notification` and `svc/signing` may call
 `/scheduler.v1.Registration/{RegisterTaskTypes,UnregisterTaskTypes}` — extend
 `modules-register` for every new executing module.
 
