@@ -111,3 +111,31 @@ func TestVocabulary(t *testing.T) {
 		}
 	}
 }
+
+// Admins and owners of the platform tenant are platform administrators;
+// admins of other tenants and plain platform members are not.
+func TestPlatformTenantAdmins(t *testing.T) {
+	old := PlatformTenant
+	defer func() { PlatformTenant = old }()
+	PlatformTenant = DefaultPlatformTenant
+	other := "0190f7c2-6a3e-7c1a-9b2e-2f6f9d1b4c55"
+	for _, c := range []struct {
+		s    Subjects
+		want bool
+	}{
+		{User(DefaultPlatformTenant, "u", []string{"admin"}), true},
+		{User(DefaultPlatformTenant, "u", []string{"owner"}), true},
+		{User(DefaultPlatformTenant, "u", []string{"member", "operator"}), false},
+		{User(other, "u", []string{"admin", "owner"}), false},
+		{User("", "u", []string{"admin"}), false},
+		{Subjects{TenantID: DefaultPlatformTenant, UserID: "svc", Roles: []string{"admin"}, ActorKind: ActorService}, false},
+	} {
+		if got := c.s.IsPlatformAdmin(); got != c.want {
+			t.Errorf("%+v: IsPlatformAdmin = %v", c.s, got)
+		}
+	}
+	PlatformTenant = other
+	if !User(other, "u", []string{"owner"}).IsPlatformAdmin() || User(DefaultPlatformTenant, "u", []string{"owner"}).IsPlatformAdmin() {
+		t.Fatal("configured platform tenant ignored")
+	}
+}

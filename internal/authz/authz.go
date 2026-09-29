@@ -102,10 +102,26 @@ func (s Subjects) HasRole(role string) bool {
 	return false
 }
 
-// IsPlatformAdmin reports whether the caller has the cross-tenant scope: a
-// user with the platform-admin role, or the system subject.
+// DefaultPlatformTenant is the platform operators' tenant.
+const DefaultPlatformTenant = "00000000-0000-0000-0000-000000000001"
+
+// PlatformTenant is the tenant whose administrators and owners act as
+// platform administrators (config platform_tenant_id; set once at start).
+var PlatformTenant = DefaultPlatformTenant
+
+// IsPlatformAdmin reports whether the caller has the cross-tenant scope: the
+// system subject, a user with the platform-admin role, or an admin or owner
+// of the platform tenant (auth issues no platform-admin role; the platform
+// operators are the platform tenant's admins and owners).
 func (s Subjects) IsPlatformAdmin() bool {
-	return s.ActorKind == ActorSystem || (s.ActorKind == ActorUser && s.HasRole(RolePlatformAdmin))
+	if s.ActorKind == ActorSystem {
+		return true
+	}
+	if s.ActorKind != ActorUser {
+		return false
+	}
+	return s.HasRole(RolePlatformAdmin) ||
+		(s.TenantID != "" && s.TenantID == PlatformTenant && (s.HasRole("admin") || s.HasRole("owner")))
 }
 
 // ActorID is the user id, falling back to the actor kind.
