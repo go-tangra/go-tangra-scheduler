@@ -346,7 +346,11 @@ func taskWhere(s repo.Scope, f store.TaskFilter) (string, []any) {
 		args = append(args, v)
 		conds = append(conds, fmt.Sprintf(cond, len(args)))
 	}
-	if s.All && f.TenantID != "" {
+	// The tenant predicate is explicit (not only RLS) so a tenant scope never
+	// depends on the session GUC alone and the planner sees the index prefix.
+	if !s.All {
+		add("tenant_id = $%d::uuid", s.TenantID)
+	} else if f.TenantID != "" {
 		add("tenant_id = $%d::uuid", f.TenantID)
 	}
 	if f.Periodic {
@@ -547,6 +551,9 @@ func (d *DB) ListExecutions(ctx context.Context, s repo.Scope, f store.ExecFilte
 	add := func(cond string, v any) {
 		args = append(args, v)
 		conds = append(conds, fmt.Sprintf(cond, len(args)))
+	}
+	if !s.All {
+		add("tenant_id = $%d::uuid", s.TenantID)
 	}
 	if f.TaskID != "" {
 		add("task_id = $%d::uuid", f.TaskID)
