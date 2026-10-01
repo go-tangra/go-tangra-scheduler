@@ -25,6 +25,8 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/go-tangra/go-tangra/v4/listquery"
+
 	"github.com/go-tangra/go-tangra-scheduler/v4/internal/authz"
 	"github.com/go-tangra/go-tangra-scheduler/v4/internal/engine"
 	"github.com/go-tangra/go-tangra-scheduler/v4/internal/registry"
@@ -213,11 +215,11 @@ func TestRepoDB(t *testing.T) {
 			t.Fatal("cross-tenant insert admitted")
 		}
 		// platform admins see every tenant, platform rows included
-		if items, total, err := svc.List(ctx, root, store.TaskFilter{}); err != nil || total != 2 || len(items) != 2 {
-			t.Fatalf("admin list = %d %v", total, err)
+		if pg, err := svc.List(ctx, root, store.TaskFilter{}); err != nil || pg.Total != 2 || len(pg.Items) != 2 {
+			t.Fatalf("admin list = %d %v", pg.Total, err)
 		}
-		if items, _, err := svc.List(ctx, root, store.TaskFilter{TenantID: tenantA, Kind: store.KindPeriodic, State: store.StateEnabled, Validity: store.ValidityOK, Type: scanType, Query: "a"}); err != nil || len(items) != 1 {
-			t.Fatalf("filtered admin list = %v %v", items, err)
+		if pg, err := svc.List(ctx, root, store.TaskFilter{TenantID: tenantA, Kind: store.KindPeriodic, State: store.StateEnabled, Validity: store.ValidityOK, Type: scanType, Query: "a"}); err != nil || len(pg.Items) != 1 {
+			t.Fatalf("filtered admin list = %v %v", pg.Items, err)
 		}
 		if _, err := db.GetTask(ctx, repo.Tenant(tenantA), "not-a-uuid"); !errors.Is(err, repo.ErrNotFound) {
 			t.Fatalf("malformed id: %v", err)
@@ -298,7 +300,7 @@ func TestRepoDB(t *testing.T) {
 		if execs != 20 {
 			t.Fatalf("attempt rows = %d", execs)
 		}
-		page, err := svc.Executions(ctx, userA, store.ExecFilter{Statuses: []string{store.ExecSucceeded}, Trigger: store.TriggerSchedule, PageSize: 5})
+		page, err := svc.Executions(ctx, userA, store.ExecFilter{Statuses: []string{store.ExecSucceeded}, Trigger: store.TriggerSchedule, List: listquery.Request{PageSize: 5}})
 		if err != nil || page.Total != 20 || len(page.Items) != 5 || page.Counts.Succeeded != 20 || page.Items[0].Result != nil {
 			t.Fatalf("history = %+v %v", page, err)
 		}

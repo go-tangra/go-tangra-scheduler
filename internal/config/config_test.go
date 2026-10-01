@@ -35,7 +35,7 @@ func TestDefaultSecure(t *testing.T) {
 	}
 	l := d.Limits
 	if l.MaxPayloadBytes != 65536 || l.MaxResultBytes != 65536 || l.MaxTimeoutSeconds != 3600 || l.MinIntervalSeconds != 60 ||
-		l.MaxPageSize != 100 || l.MaxBackupBytes != 33554432 || l.MaxTasksPerTenant != 1000 {
+		l.MaxPageSize != 200 || l.MaxBackupBytes != 33554432 || l.MaxTasksPerTenant != 1000 {
 		t.Fatalf("limit defaults: %+v", l)
 	}
 	if err := Default().Validate(); err == nil {

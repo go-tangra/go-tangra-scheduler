@@ -126,6 +126,8 @@ type Tasks interface {
 	// ErrLimit when the tenant already holds maxPerTenant tasks (0 = no limit).
 	CreateTask(ctx context.Context, t store.Task, first *store.Execution, maxPerTenant int) error
 	GetTask(ctx context.Context, s Scope, id string) (store.Task, error)
+	// ListTasks returns one page (f.List, store.TaskList order; a page beyond
+	// the end answers the last page) and the total of the filter.
 	ListTasks(ctx context.Context, s Scope, f store.TaskFilter) ([]store.Task, int64, error)
 	// MutateTask locks the task, applies fn and writes the task and its
 	// effects in one transaction. ErrConflict on a duplicate name.
@@ -137,7 +139,7 @@ type Tasks interface {
 // Executions is the history surface.
 type Executions interface {
 	GetExecution(ctx context.Context, s Scope, id string) (store.Execution, error)
-	// ListExecutions returns one page (newest first, result omitted), the total
+	// ListExecutions returns one page (f.List, store.ExecutionList order; result omitted), the total
 	// and the summary counts of the filter without its status filters.
 	ListExecutions(ctx context.Context, s Scope, f store.ExecFilter) ([]store.Execution, int64, store.ExecCounts, error)
 	Overview(ctx context.Context, s Scope, now time.Time) (store.Overview, error)

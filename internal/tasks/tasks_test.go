@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-tangra/go-tangra/v4/listquery"
+
 	"github.com/go-tangra/go-tangra-scheduler/v4/internal/audit"
 	"github.com/go-tangra/go-tangra-scheduler/v4/internal/authz"
 	"github.com/go-tangra/go-tangra-scheduler/v4/internal/events"
@@ -341,16 +343,16 @@ func TestPlatformScope(t *testing.T) {
 			t.Fatalf("user A runs %s: %v", id, err)
 		}
 	}
-	items, total, err := f.svc.List(ctx, userA, store.TaskFilter{TenantID: tenantB})
-	if err != nil || total != 1 || items[0].ID != a.ID {
-		t.Fatalf("user A list = %v %d %v", items, total, err)
+	pg, err := f.svc.List(ctx, userA, store.TaskFilter{TenantID: tenantB})
+	if err != nil || pg.Total != 1 || pg.Items[0].ID != a.ID {
+		t.Fatalf("user A list = %+v %v", pg, err)
 	}
 	// platform admins see every tenant and may narrow to one
-	if _, total, _ := f.svc.List(ctx, root, store.TaskFilter{}); total != 3 {
-		t.Fatalf("admin list total = %d", total)
+	if pg, _ := f.svc.List(ctx, root, store.TaskFilter{}); pg.Total != 3 {
+		t.Fatalf("admin list total = %d", pg.Total)
 	}
-	if items, _, _ := f.svc.List(ctx, root, store.TaskFilter{TenantID: tenantB}); len(items) != 1 || items[0].ID != b.ID {
-		t.Fatalf("admin narrowed = %v", items)
+	if pg, _ := f.svc.List(ctx, root, store.TaskFilter{TenantID: tenantB}); len(pg.Items) != 1 || pg.Items[0].ID != b.ID {
+		t.Fatalf("admin narrowed = %v", pg.Items)
 	}
 	if v, err := f.svc.Get(ctx, root, b.ID); err != nil || v.ID != b.ID {
 		t.Fatalf("admin get: %v", err)
@@ -367,15 +369,24 @@ func TestListFiltersAndTypeNames(t *testing.T) {
 	if _, err := f.svc.Create(ctx, userA, CreateInput{Name: "gamma", TypeName: mailType, Kind: store.KindDelayed, Payload: raw(`{"recipient":"a@b.example"}`)}); err != nil {
 		t.Fatal(err)
 	}
-	items, total, err := f.svc.List(ctx, userA, store.TaskFilter{Kind: store.KindPeriodic, Page: 2, PageSize: 1})
-	if err != nil || total != 2 || len(items) != 1 || items[0].Name != "beta" || items[0].TypeDisplayName != "Scan network" {
-		t.Fatalf("page 2 = %+v %d %v", items, total, err)
+	pg, err := f.svc.List(ctx, userA, store.TaskFilter{Kind: store.KindPeriodic, List: listquery.Request{Page: 2, PageSize: 1}})
+	if err != nil || pg.Total != 2 || pg.Page != 2 || pg.Sort != "name" || pg.Order != listquery.Asc || len(pg.Items) != 1 ||
+		pg.Items[0].Name != "beta" || pg.Items[0].TypeDisplayName != "Scan network" {
+		t.Fatalf("page 2 = %+v %v", pg, err)
 	}
-	if items, _, _ := f.svc.List(ctx, userA, store.TaskFilter{Query: "GAM"}); len(items) != 1 || items[0].Name != "gamma" {
-		t.Fatalf("query = %+v", items)
+	// beyond the last page → the last page; descending name; size capped at the limit
+	pg, _ = f.svc.List(ctx, userA, store.TaskFilter{List: listquery.Request{Page: 9, PageSize: 2, Sort: "name", Order: listquery.Desc}})
+	if pg.Page != 2 || pg.Total != 3 || len(pg.Items) != 1 || pg.Items[0].Name != "alpha" {
+		t.Fatalf("clamped desc = %+v", pg)
+	}
+	if pg, _ := f.svc.List(ctx, userA, store.TaskFilter{List: listquery.Request{PageSize: 200}}); pg.PageSize != 100 {
+		t.Fatalf("size cap = %d", pg.PageSize)
+	}
+	if pg, _ := f.svc.List(ctx, userA, store.TaskFilter{Query: "GAM"}); len(pg.Items) != 1 || pg.Items[0].Name != "gamma" {
+		t.Fatalf("query = %+v", pg.Items)
 	}
 	f.st.SetErr(errors.New("db down"))
-	if _, _, err := f.svc.List(ctx, userA, store.TaskFilter{}); err == nil {
+	if _, err := f.svc.List(ctx, userA, store.TaskFilter{}); err == nil {
 		t.Fatal("list failure hidden")
 	}
 	if _, err := f.svc.Get(ctx, userA, "x"); err == nil {
@@ -385,7 +396,7 @@ func TestListFiltersAndTypeNames(t *testing.T) {
 	f.st.SetErr(nil)
 	st := &typesDown{Mem: f.st}
 	f.svc.st = st
-	if items, _, err := f.svc.List(ctx, userA, store.TaskFilter{}); err != nil || items[0].TypeDisplayName != "" {
+	if pg, err := f.svc.List(ctx, userA, store.TaskFilter{}); err != nil || pg.Items[0].TypeDisplayName != "" {
 		t.Fatalf("catalog down: %v", err)
 	}
 }
@@ -591,7 +602,7 @@ func TestOptTimeAndResultValue(t *testing.T) {
 
 func TestDefaults(t *testing.T) {
 	s := New(Deps{Store: memstore.New()})
-	if s.lim.MaxPayloadBytes != 64<<10 || s.lim.MaxTimeoutSeconds != 3600 || s.lim.MinIntervalSeconds != 60 || s.lim.MaxPageSize != 100 || s.reg == nil {
+	if s.lim.MaxPayloadBytes != 64<<10 || s.lim.MaxTimeoutSeconds != 3600 || s.lim.MinIntervalSeconds != 60 || s.lim.MaxPageSize != 200 || s.reg == nil {
 		t.Fatalf("defaults = %+v", s.lim)
 	}
 	if s.Now().IsZero() {

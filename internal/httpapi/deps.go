@@ -1,8 +1,11 @@
 package httpapi
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
+
+	"github.com/go-tangra/go-tangra/v4/listquery"
 
 	"github.com/go-tangra/go-tangra-scheduler/v4/internal/authz"
 	"github.com/go-tangra/go-tangra-scheduler/v4/internal/backup"
@@ -87,4 +90,17 @@ func queryBool(r *http.Request, name string) *bool {
 	}
 	b := v == "true" || v == "1"
 	return &b
+}
+
+// parseList reads the list contract parameters (page, page_size, sort, order;
+// go-tangra specs/032-server-side-tables) against spec. An invalid value is
+// answered with validation_failed naming the parameter (never its value).
+func parseList(w http.ResponseWriter, r *http.Request, spec listquery.Spec) (listquery.Request, bool) {
+	req, err := listquery.Parse(r.URL.Query(), spec)
+	var le *listquery.Error
+	if errors.As(err, &le) {
+		WriteDetail(w, ErrValidation.Status, ErrValidation.Reason, map[string]any{"param": le.Param})
+		return req, false
+	}
+	return req, true
 }

@@ -12,6 +12,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/go-tangra/go-tangra/v4/listquery"
+
 	"github.com/go-tangra/go-tangra-scheduler/v4/internal/repo"
 	"github.com/go-tangra/go-tangra-scheduler/v4/internal/store"
 )
@@ -426,7 +428,26 @@ func (m *Mem) filterTasks(s repo.Scope, f store.TaskFilter) []store.Task {
 	return out
 }
 
-// ListTasks implements repo.Tasks (ordered by name).
+// taskKey is the value of a store.TaskList sort field (same semantics as SQL).
+func taskKey(t store.Task, field string) any {
+	switch field {
+	case "type":
+		return t.TypeName
+	case "state":
+		return t.State()
+	case "next_run_at":
+		if t.NextRunAt == nil {
+			return nil
+		}
+		return *t.NextRunAt
+	case "updated_at":
+		return t.UpdatedAt
+	default:
+		return t.Name
+	}
+}
+
+// ListTasks implements repo.Tasks (store.TaskList order).
 func (m *Mem) ListTasks(_ context.Context, s repo.Scope, f store.TaskFilter) ([]store.Task, int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -434,13 +455,14 @@ func (m *Mem) ListTasks(_ context.Context, s repo.Scope, f store.TaskFilter) ([]
 		return nil, 0, m.Err
 	}
 	all := m.filterTasks(s, f)
-	page, size := store.Page(f.Page, f.PageSize, 100)
-	from := (page - 1) * size
-	out := []store.Task{}
-	for i := from; i < len(all) && i < from+size; i++ {
-		out = append(out, cloneTask(all[i]))
+	req := store.ListRequest(f.List, store.TaskList)
+	listquery.SortSlice(all, req, taskKey, func(t store.Task) string { return t.ID })
+	page, total, _ := listquery.Window(all, req)
+	out := make([]store.Task, 0, len(page))
+	for _, t := range page {
+		out = append(out, cloneTask(t))
 	}
-	return out, int64(len(all)), nil
+	return out, int64(total), nil
 }
 
 // TaskIDs implements repo.Tasks.
@@ -540,7 +562,7 @@ func matchExecStatus(e store.Execution, f store.ExecFilter) bool {
 	return false
 }
 
-// ListExecutions implements repo.Executions (newest first, result omitted).
+// ListExecutions implements repo.Executions (store.ExecutionList order, result omitted).
 func (m *Mem) ListExecutions(_ context.Context, s repo.Scope, f store.ExecFilter) ([]store.Execution, int64, store.ExecCounts, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -565,15 +587,30 @@ func (m *Mem) ListExecutions(_ context.Context, s repo.Scope, f store.ExecFilter
 			all = append(all, e)
 		}
 	}
-	sortExecsAsc(all)
-	page, size := store.Page(f.Page, f.PageSize, 100)
-	out := []store.Execution{}
-	for i := len(all) - 1 - (page-1)*size; i >= 0 && len(out) < size; i-- {
-		e := cloneExec(all[i])
+	req := store.ListRequest(f.List, store.ExecutionList)
+	listquery.SortSlice(all, req, execKey, func(e store.Execution) string { return e.ID })
+	page, total, _ := listquery.Window(all, req)
+	out := make([]store.Execution, 0, len(page))
+	for _, e := range page {
+		e = cloneExec(e)
 		e.Result = nil
 		out = append(out, e)
 	}
-	return out, int64(len(all)), counts, nil
+	return out, int64(total), counts, nil
+}
+
+// execKey is the value of a store.ExecutionList sort field.
+func execKey(e store.Execution, field string) any {
+	switch field {
+	case "status":
+		return e.Status
+	case "duration":
+		return e.DurationMS
+	case "trigger":
+		return e.Trigger
+	default:
+		return e.CreatedAt
+	}
 }
 
 // Overview implements repo.Executions.

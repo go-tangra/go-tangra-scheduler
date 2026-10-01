@@ -15,15 +15,19 @@ import (
 // the tenant / platform scope rules.
 func (s *Server) registerTasks(svc *tasks.Service) {
 	s.withSubject("GET", Prefix+"/tasks", func(w http.ResponseWriter, r *http.Request, subj authz.Subjects) {
+		req, ok := parseList(w, r, store.TaskList)
+		if !ok {
+			return
+		}
 		q := r.URL.Query()
 		f := store.TaskFilter{Kind: q.Get("kind"), State: q.Get("state"), Validity: q.Get("validity"), Type: q.Get("type"),
-			Query: q.Get("q"), TenantID: q.Get("tenant_id"), Page: queryInt(r, "page"), PageSize: queryInt(r, "page_size")}
-		items, total, err := svc.List(r.Context(), subj, f)
+			Query: q.Get("q"), TenantID: q.Get("tenant_id"), List: req}
+		page, err := svc.List(r.Context(), subj, f)
 		if err != nil {
 			s.fail(w, r, err)
 			return
 		}
-		WriteJSON(w, http.StatusOK, map[string]any{"items": items, "total": total})
+		WriteJSON(w, http.StatusOK, page)
 	})
 	s.withSubject("POST", Prefix+"/tasks", func(w http.ResponseWriter, r *http.Request, subj authz.Subjects) {
 		var in tasks.CreateInput

@@ -24,9 +24,13 @@ func queryTime(r *http.Request, name string) *time.Time {
 // registerExecutions mounts the history routes.
 func (s *Server) registerExecutions(svc *tasks.Service) {
 	s.withSubject("GET", Prefix+"/executions", func(w http.ResponseWriter, r *http.Request, subj authz.Subjects) {
+		req, ok := parseList(w, r, store.ExecutionList)
+		if !ok {
+			return
+		}
 		q := r.URL.Query()
 		f := store.ExecFilter{TaskID: q.Get("task_id"), Statuses: q["status"], Trigger: q.Get("trigger"),
-			From: queryTime(r, "from"), To: queryTime(r, "to"), Page: queryInt(r, "page"), PageSize: queryInt(r, "page_size")}
+			From: queryTime(r, "from"), To: queryTime(r, "to"), List: req}
 		if b := queryBool(r, "failed_only"); b != nil {
 			f.FailedOnly = *b
 		}
