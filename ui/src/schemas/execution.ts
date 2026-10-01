@@ -29,11 +29,16 @@ export const executionSchema = z.looseObject({
   message: z.string().optional(),
   result: z.unknown().optional(),
   result_truncated: z.boolean().optional(),
+  created_at: z.string().optional(),
 })
 
 export const executionPageSchema = z.looseObject({
   items: z.array(executionSchema),
   total: z.number().int(),
+  page: z.number().int().optional(),
+  page_size: z.number().int().optional(),
+  sort: z.string().optional(),
+  order: z.enum(['asc', 'desc']).optional(),
   counts: z.looseObject({ succeeded: z.number().int().optional(), failed: z.number().int().optional(), other: z.number().int().optional() }),
 })
 

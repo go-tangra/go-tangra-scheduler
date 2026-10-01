@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"unicode/utf8"
 
+	"github.com/go-tangra/go-tangra/v4/listquery"
+
 	"github.com/go-tangra/go-tangra-scheduler/v4/internal/authz"
 	"github.com/go-tangra/go-tangra-scheduler/v4/internal/store"
 )
@@ -31,25 +33,25 @@ func ResultValue(b []byte) any {
 	return string([]rune(string(b))) // invalid UTF-8 replaced, never raw bytes
 }
 
-// ExecPage is one page of history.
+// ExecPage is one page of history: the list contract plus the summary counts.
 type ExecPage struct {
-	Items  []ExecView       `json:"items"`
-	Total  int64            `json:"total"`
+	listquery.Page[ExecView]
 	Counts store.ExecCounts `json:"counts"`
 }
 
-// Executions lists visible attempts, newest first (results omitted).
+// Executions lists visible attempts (store.ExecutionList order, newest first by
+// default; results omitted).
 func (s *Service) Executions(ctx context.Context, subj authz.Subjects, f store.ExecFilter) (ExecPage, error) {
-	f.Page, f.PageSize = store.Page(f.Page, f.PageSize, s.lim.MaxPageSize)
+	f.List = s.pageRequest(f.List, store.ExecutionList)
 	items, total, counts, err := s.st.ListExecutions(ctx, Scope(subj), f)
 	if err != nil {
 		return ExecPage{}, err
 	}
-	out := ExecPage{Items: make([]ExecView, 0, len(items)), Total: total, Counts: counts}
+	views := make([]ExecView, 0, len(items))
 	for _, e := range items {
-		out.Items = append(out.Items, ExecView{Execution: e})
+		views = append(views, ExecView{Execution: e})
 	}
-	return out, nil
+	return ExecPage{Page: listquery.NewPage(views, int(total), f.List.Clamp(int(total))), Counts: counts}, nil
 }
 
 // Execution returns one visible attempt with its message and result.

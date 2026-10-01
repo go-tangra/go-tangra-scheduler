@@ -117,7 +117,7 @@ func Default() Config {
 		Engine: Engine{TickMS: 1000, Workers: 16, Batch: 100, MisfireGraceSeconds: 60, LeaseGraceSeconds: 30,
 			RetentionDays: 90, RetentionIntervalMinutes: 60},
 		Limits: Limits{MaxPayloadBytes: 64 << 10, MaxResultBytes: 64 << 10, MaxTimeoutSeconds: 3600, MinIntervalSeconds: 60,
-			MaxPageSize: 100, MaxBackupBytes: 32 << 20, MaxTasksPerTenant: 1000},
+			MaxPageSize: 200, MaxBackupBytes: 32 << 20, MaxTasksPerTenant: 1000},
 	}
 }
 
@@ -219,8 +219,8 @@ func (c Config) validateLimits() error {
 		return errors.New("config: limits_scheduler.max_timeout_seconds must be within [1, 86400]")
 	case !within(l.MinIntervalSeconds, 60, 86400):
 		return errors.New("config: limits_scheduler.min_interval_seconds must be within [60, 86400]")
-	case !within(l.MaxPageSize, 1, 100):
-		return errors.New("config: limits_scheduler.max_page_size must be within [1, 100]")
+	case !within(l.MaxPageSize, 1, 200):
+		return errors.New("config: limits_scheduler.max_page_size must be within [1, 200]")
 	case !within(l.MaxBackupBytes, 1<<10, 256<<20):
 		return errors.New("config: limits_scheduler.max_backup_bytes must be within [1 KiB, 256 MiB]")
 	case !within(l.MaxTasksPerTenant, 1, 100000):

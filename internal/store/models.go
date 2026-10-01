@@ -5,6 +5,8 @@ package store
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/go-tangra/go-tangra/v4/listquery"
 )
 
 // PlatformScopeTenant is the tenant of platform-scoped tasks (the nil uuid,
@@ -162,7 +164,7 @@ type Execution struct {
 	Final           bool       `json:"-"`
 	LeaseOwner      string     `json:"-"`
 	LeaseUntil      *time.Time `json:"-"`
-	CreatedAt       time.Time  `json:"-"`
+	CreatedAt       time.Time  `json:"created_at"`
 }
 
 // Finished reports whether the attempt reached an end state.
@@ -188,8 +190,8 @@ type TaskFilter struct {
 	Query    string
 	TenantID string // platform-admin (all-tenant) scope only
 	Periodic bool   // only periodic tasks (bulk control)
-	Page     int
-	PageSize int
+	// List is the page and order (TaskList); TaskIDs ignores it.
+	List listquery.Request
 }
 
 // ExecFilter selects executions.
@@ -199,8 +201,8 @@ type ExecFilter struct {
 	FailedOnly bool
 	Trigger    string
 	From, To   *time.Time
-	Page       int
-	PageSize   int
+	// List is the page and order (ExecutionList).
+	List listquery.Request
 }
 
 // ExecCounts are the history summary counts of a filter (status filters aside).
@@ -258,23 +260,4 @@ type AuditRow struct {
 	Outcome     string
 	Reason      string
 	Detail      map[string]any
-}
-
-// Page normalises a page/page size pair (1-based page, size 1..max).
-func Page(page, size, max int) (int, int) {
-	if max <= 0 {
-		max = 100
-	}
-	if page < 1 {
-		page = 1
-	}
-	if size < 1 || size > max {
-		if size < 1 {
-			size = 25
-		}
-		if size > max {
-			size = max
-		}
-	}
-	return page, size
 }

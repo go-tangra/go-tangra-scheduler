@@ -1,39 +1,54 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import type { ListQueryOptions } from '@go-tangra/ui'
 import { api, describe } from '@/api/client'
-import type { BulkAction, BulkResult, CronPreview, RunAccepted, Task, TaskCreate, TaskFilter, TaskPage, TaskUpdate } from '@/api/types'
+import type { BulkAction, BulkResult, CronPreview, ListParams, RunAccepted, Task, TaskCreate, TaskFilter, TaskPage, TaskUpdate } from '@/api/types'
 
 export const PAGE_SIZE = 25
+
+/** Sortable fields of GET /tasks (server Spec store.TaskList). */
+export const TASK_SORTS = ['name', 'type', 'state', 'next_run_at', 'updated_at'] as const
+export const TASK_LIST: ListQueryOptions = { sortable: [...TASK_SORTS], defaultSort: { key: 'name', dir: 'asc' }, defaultSize: PAGE_SIZE }
+const FIRST_PAGE: ListParams = { page: 1, page_size: PAGE_SIZE, sort: 'name', order: 'asc' }
 
 export type ControlAction = 'start' | 'stop' | 'restart' | 'cancel'
 
 export const useTasks = defineStore('scheduler-tasks', () => {
   const items = ref<Task[]>([])
   const total = ref(0)
-  const page = ref(1)
-  const pageSize = ref(PAGE_SIZE)
+  const params = ref<ListParams>({ ...FIRST_PAGE })
   const filter = ref<TaskFilter>({})
   const loading = ref(false)
   const error = ref('')
+  let seq = 0
 
-  /** Loads one page with the filter (blank filter values are not sent). */
-  async function list(f: TaskFilter = filter.value, p = 1): Promise<void> {
+  /**
+   * Loads one server page with the filter (blank filter values are not sent).
+   * Resolves with the page, or null when it failed or a newer request
+   * superseded it (its rows are then ignored).
+   */
+  async function list(f: TaskFilter = filter.value, q: ListParams = params.value): Promise<TaskPage | null> {
+    const mine = ++seq
     loading.value = true
     error.value = ''
     filter.value = { ...f }
+    params.value = { ...q }
     try {
-      const res = await api<TaskPage>('GET', 'tasks', undefined, { query: { ...f, page: p, page_size: pageSize.value } })
+      const res = await api<TaskPage>('GET', 'tasks', undefined, { query: { ...f, ...q } })
+      if (mine !== seq) return null
       items.value = res.items ?? []
       total.value = res.total ?? 0
-      page.value = p
+      return res
     } catch (e) {
-      error.value = describe(e)
+      if (mine === seq) error.value = describe(e)
+      return null
     } finally {
-      loading.value = false
+      if (mine === seq) loading.value = false
     }
   }
 
-  const reload = () => list(filter.value, page.value)
+  /** Reloads the current page with the current filter and order. */
+  const reload = () => list()
 
   function replace(t: Task): Task {
     items.value = items.value.map((x) => (x.id === t.id ? t : x))
@@ -86,5 +101,5 @@ export const useTasks = defineStore('scheduler-tasks', () => {
     return res.next ?? []
   }
 
-  return { items, total, page, pageSize, filter, loading, error, list, reload, get, create, update, remove, control, run, bulk, previewCron, replace }
+  return { items, total, params, filter, loading, error, list, reload, get, create, update, remove, control, run, bulk, previewCron, replace }
 })

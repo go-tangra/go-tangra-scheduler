@@ -382,7 +382,7 @@ func taskWhere(s repo.Scope, f store.TaskFilter) (string, []any) {
 
 // ListTasks implements repo.Tasks.
 func (d *DB) ListTasks(ctx context.Context, s repo.Scope, f store.TaskFilter) ([]store.Task, int64, error) {
-	page, size := store.Page(f.Page, f.PageSize, 100)
+	req := store.ListRequest(f.List, store.TaskList)
 	where, args := taskWhere(s, f)
 	var out []store.Task
 	var total int64
@@ -390,9 +390,10 @@ func (d *DB) ListTasks(ctx context.Context, s repo.Scope, f store.TaskFilter) ([
 		if err := tx.QueryRow(ctx, `SELECT count(*) FROM scheduler_tasks WHERE `+where, args...).Scan(&total); err != nil {
 			return err
 		}
+		req = req.Clamp(int(total))
 		var err error
-		out, err = queryTasks(ctx, tx, fmt.Sprintf(`SELECT %s FROM scheduler_tasks WHERE %s ORDER BY lower(name), id LIMIT %d OFFSET %d`,
-			taskCols, where, size, (page-1)*size), args...)
+		out, err = queryTasks(ctx, tx, fmt.Sprintf(`SELECT %s FROM scheduler_tasks WHERE %s ORDER BY %s LIMIT %d OFFSET %d`,
+			taskCols, where, req.OrderBy(store.TaskList), req.Limit(), req.Offset()), args...)
 		return err
 	})
 	if errors.Is(err, repo.ErrNotFound) {
@@ -540,7 +541,7 @@ func (d *DB) GetExecution(ctx context.Context, s repo.Scope, id string) (e store
 
 // ListExecutions implements repo.Executions.
 func (d *DB) ListExecutions(ctx context.Context, s repo.Scope, f store.ExecFilter) ([]store.Execution, int64, store.ExecCounts, error) {
-	page, size := store.Page(f.Page, f.PageSize, 100)
+	req := store.ListRequest(f.List, store.ExecutionList)
 	conds := []string{"true"}
 	args := []any{}
 	add := func(cond string, v any) {
@@ -581,9 +582,10 @@ func (d *DB) ListExecutions(ctx context.Context, s repo.Scope, f store.ExecFilte
 		if err := tx.QueryRow(ctx, `SELECT count(*) FROM scheduler_executions WHERE `+status, args...).Scan(&total); err != nil {
 			return err
 		}
+		req = req.Clamp(int(total))
 		var err error
-		out, err = queryExecs(ctx, tx, fmt.Sprintf(`SELECT %s FROM scheduler_executions WHERE %s ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d`,
-			execListCols, status, size, (page-1)*size), args...)
+		out, err = queryExecs(ctx, tx, fmt.Sprintf(`SELECT %s FROM scheduler_executions WHERE %s ORDER BY %s LIMIT %d OFFSET %d`,
+			execListCols, status, req.OrderBy(store.ExecutionList), req.Limit(), req.Offset()), args...)
 		return err
 	})
 	if errors.Is(err, repo.ErrNotFound) {

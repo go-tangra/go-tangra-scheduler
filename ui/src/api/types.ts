@@ -64,9 +64,26 @@ export interface Task {
   execution_id?: string
 }
 
-export interface TaskPage {
-  items: Task[]
+/** The list contract fields of a page (go-tangra specs/032-server-side-tables). */
+export interface PageInfo {
   total: number
+  /** The page returned: a page beyond the end answers the last page. */
+  page?: number
+  page_size?: number
+  sort?: string
+  order?: 'asc' | 'desc'
+}
+
+/** Page, size and order of a list request. */
+export interface ListParams {
+  page: number
+  page_size: number
+  sort: string
+  order: 'asc' | 'desc'
+}
+
+export interface TaskPage extends PageInfo {
+  items: Task[]
 }
 
 /** GET /tasks query. */
@@ -131,6 +148,8 @@ export interface Execution {
   /** Module result: a JSON value, or a string when it is not JSON (single execution only). */
   result?: unknown
   result_truncated?: boolean
+  /** When the attempt was recorded (the history sort field). */
+  created_at?: string
 }
 
 export interface ExecutionCounts {
@@ -139,9 +158,8 @@ export interface ExecutionCounts {
   other?: number
 }
 
-export interface ExecutionPage {
+export interface ExecutionPage extends PageInfo {
   items: Execution[]
-  total: number
   counts: ExecutionCounts
 }
 

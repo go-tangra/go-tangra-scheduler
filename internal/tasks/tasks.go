@@ -17,6 +17,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/go-tangra/go-tangra/v4/listquery"
+
 	"github.com/go-tangra/go-tangra-scheduler/v4/internal/audit"
 	"github.com/go-tangra/go-tangra-scheduler/v4/internal/authz"
 	"github.com/go-tangra/go-tangra-scheduler/v4/internal/cron"
@@ -125,8 +127,8 @@ func New(d Deps) *Service {
 	if s.lim.MinIntervalSeconds <= 0 {
 		s.lim.MinIntervalSeconds = 60
 	}
-	if s.lim.MaxPageSize <= 0 {
-		s.lim.MaxPageSize = 100
+	if s.lim.MaxPageSize <= 0 || s.lim.MaxPageSize > listquery.MaxPageSize {
+		s.lim.MaxPageSize = listquery.MaxPageSize
 	}
 	return s
 }
@@ -487,22 +489,33 @@ func (s *Service) Get(ctx context.Context, subj authz.Subjects, id string) (View
 	return s.viewOne(ctx, t), nil
 }
 
-// List returns one page of visible tasks.
-func (s *Service) List(ctx context.Context, subj authz.Subjects, f store.TaskFilter) ([]View, int64, error) {
-	f.Page, f.PageSize = store.Page(f.Page, f.PageSize, s.lim.MaxPageSize)
+// pageRequest completes a list request with the Spec's defaults and caps its
+// size at the configured limit (limits_scheduler.max_page_size).
+func (s *Service) pageRequest(r listquery.Request, spec listquery.Spec) listquery.Request {
+	r = store.ListRequest(r, spec)
+	if r.PageSize > s.lim.MaxPageSize {
+		r.PageSize = s.lim.MaxPageSize
+	}
+	return r
+}
+
+// List returns one page of visible tasks (store.TaskList order). The page in
+// the result is the one actually returned (clamped to the last page).
+func (s *Service) List(ctx context.Context, subj authz.Subjects, f store.TaskFilter) (listquery.Page[View], error) {
+	f.List = s.pageRequest(f.List, store.TaskList)
 	if !subj.IsPlatformAdmin() {
 		f.TenantID = ""
 	}
 	items, total, err := s.st.ListTasks(ctx, Scope(subj), f)
 	if err != nil {
-		return nil, 0, err
+		return listquery.Page[View]{}, err
 	}
 	types := s.typeMap(ctx)
 	out := make([]View, 0, len(items))
 	for _, t := range items {
 		out = append(out, s.view(t, types))
 	}
-	return out, total, nil
+	return listquery.NewPage(out, int(total), f.List.Clamp(int(total))), nil
 }
 
 // ------------------------------------------------------------------ update
