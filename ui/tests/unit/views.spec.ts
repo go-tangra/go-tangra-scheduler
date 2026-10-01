@@ -63,7 +63,7 @@ describe('tasks list', () => {
     const calls = fetchMock(api())
     const w = mount(Tasks, { global: withAbility(OPERATOR), attachTo: document.body })
     await flushPromises()
-    expect(calls[0]!.url).toBe('/api/scheduler/v1/tasks?page=1&page_size=25')
+    expect(calls[0]!.url).toBe('/api/scheduler/v1/tasks?page=1&page_size=25&sort=name&order=asc')
     const r1 = w.find('[data-test="task-row-t1"]').text()
     expect(r1).toContain('Send mail')
     expect(r1).toContain('notify')
@@ -122,12 +122,12 @@ describe('tasks list', () => {
     const w = mount(Tasks, { global: withAbility(READER), attachTo: document.body })
     await flushPromises()
     await setValue('#task-filter-kind', 'periodic', 'change')
-    expect(calls.at(-1)!.url).toBe('/api/scheduler/v1/tasks?kind=periodic&page=1&page_size=25')
+    expect(calls.at(-1)!.url).toBe('/api/scheduler/v1/tasks?kind=periodic&page=1&page_size=25&sort=name&order=asc')
     await setValue('#task-filter-validity', 'payload_invalid', 'change')
     await setValue('#task-filter-q', ' mail ')
     await w.find('#task-filter-q').trigger('keyup', { key: 'Enter' })
     await flushPromises()
-    expect(calls.at(-1)!.url).toBe('/api/scheduler/v1/tasks?q=mail&kind=periodic&validity=payload_invalid&page=1&page_size=25')
+    expect(calls.at(-1)!.url).toBe('/api/scheduler/v1/tasks?q=mail&kind=periodic&validity=payload_invalid&page=1&page_size=25&sort=name&order=asc')
     w.unmount()
   })
 
@@ -318,13 +318,13 @@ describe('task drawer', () => {
 
     const h = mount(TaskDrawer, { props: { open: true, task: task(), initialTab: 'history' }, global: withAbility(OPERATOR), attachTo: document.body })
     await flushPromises()
-    expect(calls.at(-1)!.url).toBe('/api/scheduler/v1/executions?task_id=t1&page=1&page_size=20')
+    expect(calls.at(-1)!.url).toBe('/api/scheduler/v1/executions?task_id=t1&page=1&page_size=25&sort=created_at&order=desc')
     expect(q('[data-test="history-counts"]')!.textContent).toContain('3 succeeded')
     expect(q('[data-test="history-counts"]')!.textContent).toContain('1 failed')
     expect(q('[data-test="task-save"]')).toBeNull()
     ;(q('#history-failed-only') as HTMLInputElement).click()
     await flushPromises()
-    expect(calls.at(-1)!.url).toBe('/api/scheduler/v1/executions?task_id=t1&failed_only=true&page=1&page_size=20')
+    expect(calls.at(-1)!.url).toBe('/api/scheduler/v1/executions?task_id=t1&failed_only=true&page=1&page_size=25&sort=created_at&order=desc')
     await setValue('#history-status', 'timed_out', 'change')
     expect(calls.at(-1)!.url).toContain('status=timed_out')
     await setValue('#history-from', '2026-09-01T00:00')
@@ -386,7 +386,7 @@ describe('overview', () => {
     await router.push('/scheduler?q=Nightly')
     const w = mount(Tasks, { global: { plugins: [router, withAbility(READER).plugins[0]] as never }, attachTo: document.body })
     await flushPromises()
-    expect(calls[0]!.url).toBe('/api/scheduler/v1/tasks?q=Nightly&page=1&page_size=25')
+    expect(calls[0]!.url).toBe('/api/scheduler/v1/tasks?q=Nightly&page=1&page_size=25&sort=name&order=asc')
     w.unmount()
   })
 })
@@ -422,4 +422,99 @@ describe('accessibility', () => {
     expect((await axe(o.element as HTMLElement, rules)).violations).toEqual([])
     o.unmount()
   }, 30_000)
+})
+
+describe('server paging and sorting (list contract)', () => {
+  const params = (url: string) => new URL(url, 'https://x').searchParams
+  // A server of 120 tasks / 60 attempts that echoes the request and clamps the page.
+  function paged(totalTasks = 120) {
+    return api((path) => {
+      const [base, qs] = path.split('?')
+      if (base !== 'tasks' && base !== 'executions') return undefined
+      const q = new URLSearchParams(qs)
+      const total = base === 'tasks' ? totalTasks : 60
+      const size = Number(q.get('page_size'))
+      const page = Math.min(Number(q.get('page')), Math.max(1, Math.ceil(total / size)))
+      const items = base === 'tasks' ? [task({ id: 'p' + page, name: 'Task ' + page })] : [execution({ id: 'r' + page })]
+      return { body: { items, total, page, page_size: size, sort: q.get('sort'), order: q.get('order'), ...(base === 'executions' ? { counts: {} } : {}) } }
+    })
+  }
+  const header = (w: { findAll: (s: string) => { text: () => string; trigger: (e: string) => Promise<void> }[] }, label: string) =>
+    w.findAll('th button').find((b) => b.text().startsWith(label))
+
+  it('tasks: pager with the total, whole-list header sort, filters back to page 1, live reloads keep page and sort', async () => {
+    const calls = fetchMock(paged())
+    const w = mount(Tasks, { global: withAbility(READER), attachTo: document.body })
+    await flushPromises()
+    const last = () => params(calls.filter((c) => c.url.includes('/tasks?')).at(-1)!.url)
+    expect(w.text()).toContain('Showing 1–25 of 120')
+    await w.find('[aria-label="Page 3"]').trigger('click')
+    await flushPromises()
+    expect(last().get('page')).toBe('3')
+    // Only the server's sort fields have a header control.
+    const sortable = w.findAll('th button').map((b) => b.text())
+    for (const label of ['Name', 'Type', 'Next run', 'State', 'Updated']) expect(sortable.some((t) => t.startsWith(label)), label).toBe(true)
+    for (const label of ['Kind', 'Schedule', 'Last result', 'Runs']) expect(sortable.some((t) => t.startsWith(label)), label).toBe(false)
+    // First click uses the column's default direction and returns to page 1; the second reverses.
+    await header(w, 'Updated')!.trigger('click')
+    await flushPromises()
+    expect([last().get('sort'), last().get('order'), last().get('page')]).toEqual(['updated_at', 'desc', '1'])
+    await header(w, 'Updated')!.trigger('click')
+    await flushPromises()
+    expect(last().get('order')).toBe('asc')
+    // A filter change returns to page 1 and keeps the sort.
+    await w.find('[aria-label="Page 2"]').trigger('click')
+    await flushPromises()
+    await setValue('#task-filter-kind', 'periodic', 'change')
+    expect([last().get('kind'), last().get('page'), last().get('sort'), last().get('order')]).toEqual(['periodic', '1', 'updated_at', 'asc'])
+    // A live event reloads the current page with the current order.
+    await w.find('[aria-label="Page 4"]').trigger('click')
+    await flushPromises()
+    const before = calls.length
+    FakeSource.instances[0]!.emit('scheduler.task', { task_id: 't1' })
+    await wait(450)
+    await flushPromises()
+    expect(calls.length).toBe(before + 1)
+    expect([last().get('page'), last().get('sort'), last().get('order')]).toEqual(['4', 'updated_at', 'asc'])
+    w.unmount()
+  })
+
+  it('tasks: page, size and sort live in the URL; the server-clamped page is adopted; invalid values fall back', async () => {
+    const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/scheduler', component: Tasks }] })
+    await router.push('/scheduler?tasks.page=9&tasks.size=10&tasks.sort=next_run_at&tasks.order=desc')
+    await router.isReady()
+    const calls = fetchMock(paged(31))
+    const w = mount(Tasks, { global: { plugins: [router, ...withAbility(READER).plugins] }, attachTo: document.body })
+    await flushPromises()
+    const first = params(calls.find((c) => c.url.includes('/tasks?'))!.url)
+    expect([first.get('page'), first.get('page_size'), first.get('sort'), first.get('order')]).toEqual(['9', '10', 'next_run_at', 'desc'])
+    expect(router.currentRoute.value.query['tasks.page']).toBe('4') // server clamped 9 → 4
+    w.unmount()
+    await router.push('/scheduler?tasks.sort=schedule&tasks.size=7')
+    const calls2 = fetchMock(paged(31))
+    const w2 = mount(Tasks, { global: { plugins: [router, ...withAbility(READER).plugins] }, attachTo: document.body })
+    await flushPromises()
+    const q2 = params(calls2.find((c) => c.url.includes('/tasks?'))!.url)
+    expect([q2.get('page'), q2.get('page_size'), q2.get('sort'), q2.get('order')]).toEqual(['1', '25', 'name', 'asc'])
+    w2.unmount()
+  })
+
+  it('history: sortable status, trigger, recorded time and duration', async () => {
+    const calls = fetchMock(paged())
+    const h = mount(TaskDrawer, { props: { open: true, task: task(), initialTab: 'history' }, global: withAbility(READER), attachTo: document.body })
+    await flushPromises()
+    const last = () => params(calls.filter((c) => c.url.includes('/executions?')).at(-1)!.url)
+    expect([last().get('sort'), last().get('order')]).toEqual(['created_at', 'desc'])
+    const buttons = () => qa('[data-test="history-table"] th button')
+    const sortable = buttons().map((b) => b.textContent!.trim())
+    for (const label of ['Status', 'Trigger', 'Recorded', 'Duration']) expect(sortable.some((t) => t.startsWith(label)), label).toBe(true)
+    for (const label of ['Attempt', 'Scheduled', 'Message']) expect(sortable.some((t) => t.startsWith(label)), label).toBe(false)
+    q('[data-test="history-table"] [aria-label="Page 2"]')!.click()
+    await flushPromises()
+    expect(last().get('page')).toBe('2')
+    buttons().find((b) => b.textContent!.trim().startsWith('Duration'))!.click()
+    await flushPromises()
+    expect([last().get('sort'), last().get('order'), last().get('page'), last().get('task_id')]).toEqual(['duration', 'desc', '1', 't1'])
+    h.unmount()
+  })
 })

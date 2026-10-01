@@ -49,7 +49,14 @@ export const taskSchema = z.looseObject({
   execution_id: z.string().optional(),
 })
 
-export const taskPageSchema = z.looseObject({ items: z.array(taskSchema), total: z.number().int() })
+export const taskPageSchema = z.looseObject({
+  items: z.array(taskSchema),
+  total: z.number().int(),
+  page: z.number().int().optional(),
+  page_size: z.number().int().optional(),
+  sort: z.string().optional(),
+  order: z.enum(['asc', 'desc']).optional(),
+})
 
 // --- labels ---
 export const KIND_LABELS: Record<Kind, string> = { periodic: 'Periodic', delayed: 'Delayed', wait_result: 'Wait for result' }

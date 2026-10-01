@@ -1,17 +1,18 @@
 <script setup lang="ts">
 // Scheduled tasks: a filter bar (text, kind, state, type, validity), a
 // server-paged table (type and module, kind, the schedule in plain words,
-// next run, state with validity warnings, last result, run count), row
+// next run, state with validity warnings, last result, run count; whole-list
+// header sorting on the server's sort fields, page / size / sort in the URL), row
 // actions (edit, history, start/stop/restart, run now / run again, cancel,
 // delete) and a bulk bar (start/stop/restart every periodic task in scope).
 // Actions the user may not perform are hidden (CASL abilities from the shell).
-import { computed, inject, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, inject, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { routeLocationKey } from 'vue-router'
 import { useAbility } from '@casl/vue'
-import { UiAlert, UiBadge, UiButton, UiCard, UiDataTable, UiInput, UiLiveIndicator, UiPage, UiPagination, UiSelect, UiStatusChip, UiTooltip, useConfirm, useToast, type Column, type SelectOption } from '@go-tangra/ui'
+import { UiAlert, UiBadge, UiButton, UiCard, UiDataTable, UiInput, UiLiveIndicator, UiPage, UiSelect, UiStatusChip, UiTooltip, useConfirm, useListQuery, useToast, type Column, type SelectOption } from '@go-tangra/ui'
 import { describe } from '@/api/client'
-import type { BulkAction, Kind, Task, TaskState, Validity } from '@/api/types'
-import { useTasks, type ControlAction } from '@/stores/tasks'
+import type { BulkAction, Kind, Task, TaskFilter, TaskState, Validity } from '@/api/types'
+import { TASK_LIST, useTasks, type ControlAction } from '@/stores/tasks'
 import { useTypes } from '@/stores/types'
 import { coalesce, useLive } from '@/stores/live'
 import { EXECUTION_STATUS_COLORS, KINDS, KIND_LABELS, STATE_COLORS, STATE_LABELS, TASK_STATES, VALIDITIES, VALIDITY_LABELS, isOneShot, statusLabel } from '@/schemas'
@@ -33,12 +34,23 @@ const canDelete = computed(() => ability.can('delete', 'SchedulerTask'))
 const canControl = computed(() => ability.can('control', 'SchedulerTask'))
 const canHistory = computed(() => ability.can('read', 'SchedulerExecution'))
 
+// --- server paging and sorting (page / size / sort in the URL: ?tasks.page=…) ---
+const lq = useListQuery('tasks', TASK_LIST)
+
 // --- filters ---
 // The overview links here with ?q=<task name>.
 const route = inject(routeLocationKey, null)
 const f = reactive({ q: typeof route?.query.q === 'string' ? route.query.q : '', kind: '' as Kind | '', state: '' as TaskState | '', type: '', validity: '' as Validity | '' })
-function apply(p = 1): void {
-  void store.list({ q: f.q.trim() || undefined, kind: f.kind || undefined, state: f.state || undefined, type: f.type || undefined, validity: f.validity || undefined }, p)
+const filterValue = (): TaskFilter => ({ q: f.q.trim() || undefined, kind: f.kind || undefined, state: f.state || undefined, type: f.type || undefined, validity: f.validity || undefined })
+async function load(): Promise<void> {
+  const res = await store.list(filterValue(), lq.query.value)
+  if (res?.page) lq.clampTo(res.page) // a page beyond the end answers the last page
+}
+watch(lq.query, () => void load())
+/** Filters changed: back to page 1 (which reloads), or reload in place. */
+function apply(): void {
+  if (lq.page.value !== 1) lq.resetPage()
+  else void load()
 }
 function setFilter(key: 'kind' | 'state' | 'type' | 'validity', v: unknown): void {
   ;(f as Record<string, unknown>)[key] = typeof v === 'string' ? v : ''
@@ -54,7 +66,7 @@ const refresh = coalesce(() => void store.reload())
 let release: (() => void) | null = null
 let off: (() => void) | null = null
 onMounted(() => {
-  apply()
+  void load()
   void types.list()
   release = live.connect()
   off = live.on(() => refresh.trigger())
@@ -64,10 +76,6 @@ onUnmounted(() => {
   release?.()
   refresh.cancel()
 })
-
-// --- paging ---
-const pages = computed(() => Math.max(1, Math.ceil(store.total / store.pageSize)))
-const pageLabel = computed(() => `Page ${store.page} of ${pages.value} · ${store.total} task${store.total === 1 ? '' : 's'}`)
 
 // --- drawers ---
 const drawerOpen = ref(false)
@@ -164,15 +172,17 @@ async function bulk(action: BulkAction): Promise<void> {
 
 // --- table ---
 type Row = Task & Record<string, unknown>
+// Only the server's sort fields (TASK_LIST) are sortable.
 const columns: Column<Row>[] = [
-  { key: 'name', label: 'Name' },
-  { key: 'type', label: 'Type' },
+  { key: 'name', label: 'Name', sortable: true },
+  { key: 'type', label: 'Type', sortable: true },
   { key: 'kind', label: 'Kind', width: 'sm', hideOnStack: true, format: (t) => KIND_LABELS[t.kind] },
   { key: 'schedule', label: 'Schedule' },
-  { key: 'next_run_at', label: 'Next run', format: (t) => when(t.next_run_at) || '—' },
-  { key: 'state', label: 'State' },
+  { key: 'next_run_at', label: 'Next run', sortable: true, format: (t) => when(t.next_run_at) || '—' },
+  { key: 'state', label: 'State', sortable: true },
   { key: 'last', label: 'Last result', hideOnStack: true },
   { key: 'run_count', label: 'Runs', width: 'sm', align: 'end', hideOnStack: true, format: (t) => String(t.run_count ?? 0) },
+  { key: 'updated_at', label: 'Updated', sortable: true, defaultDir: 'desc', hideOnStack: true, format: (t) => when(t.updated_at) || '—' },
 ]
 const rows = computed(() => store.items as Row[])
 const schedule = (t: Task) => (t.kind === 'periodic' ? describeSchedule(t.cron, t.timezone || 'UTC') : t.run_at ? 'once at ' + when(t.run_at) : 'once')
@@ -210,7 +220,7 @@ const lastStatusColor = (s: string | undefined) => EXECUTION_STATUS_COLORS[s as 
       <UiAlert v-if="store.error" kind="error">{{ store.error }}</UiAlert>
 
       <UiCard :padded="false">
-        <UiDataTable :items="rows" :columns="columns" :loading="store.loading" caption="Scheduled tasks — select one to see its settings and history" empty-title="No tasks" empty-text="Create a task to run a module's job on a schedule or once." clickable :row-attrs="(t) => ({ 'data-test': 'task-row-' + t.id })" data-test="tasks-table" @row-click="openTask($event)">
+        <UiDataTable :items="rows" :columns="columns" :loading="store.loading" :total="store.total" :page="lq.page.value" :page-size="lq.pageSize.value" :sort="lq.sort.value" caption="Scheduled tasks — select one to see its settings and history" empty-title="No tasks" empty-text="Create a task to run a module's job on a schedule or once." clickable :row-attrs="(t) => ({ 'data-test': 'task-row-' + t.id })" data-test="tasks-table" @row-click="openTask($event)" @update:page="lq.setPage" @update:page-size="lq.setPageSize" @update:sort="lq.setSort">
           <template #cell-name="{ row }">
             <span class="font-medium">{{ row.name }}</span>
             <UiBadge v-if="row.scope === 'platform'" size="xs" color="secondary" class="ms-1">platform</UiBadge>
@@ -251,9 +261,6 @@ const lastStatusColor = (s: string | undefined) => EXECUTION_STATUS_COLORS[s as 
           </template>
         </UiDataTable>
       </UiCard>
-      <div class="flex justify-end">
-        <UiPagination :has-prev="store.page > 1" :has-next="store.page < pages" :label="pageLabel" data-test="task-pager" @prev="store.list(store.filter, store.page - 1)" @next="store.list(store.filter, store.page + 1)" />
-      </div>
     </div>
 
     <TaskDrawer :open="drawerOpen" :task="drawerTask" :initial-tab="drawerTab" @close="drawerOpen = false" @saved="onSaved" @follow="follow($event)" @open-execution="follow($event, false)" />

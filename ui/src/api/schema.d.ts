@@ -327,7 +327,7 @@ export interface components {
             display_name: string;
             description?: string;
             /** @description JSON Schema of the payload object (null = any object) */
-            payload_schema?: unknown;
+            payload_schema?: Record<string, never> | null;
             default_cron?: string;
             default_max_retries?: number;
             scope: components["schemas"]["Scope"];
@@ -388,6 +388,13 @@ export interface components {
         TaskPage: {
             items: components["schemas"]["Task"][];
             total: number;
+            /** @description the page returned (a page beyond the end answers the last page) */
+            page: number;
+            page_size: number;
+            /** @enum {string} */
+            sort: "name" | "type" | "state" | "next_run_at" | "updated_at";
+            /** @enum {string} */
+            order: "asc" | "desc";
         };
         TaskCreate: {
             name: string;
@@ -448,10 +455,22 @@ export interface components {
             /** @description module result: JSON value, or a string when not JSON (single execution only) */
             result?: unknown;
             result_truncated?: boolean;
+            /**
+             * Format: date-time
+             * @description when the attempt was recorded (the history sort field)
+             */
+            created_at?: string;
         };
         ExecutionPage: {
             items: components["schemas"]["Execution"][];
             total: number;
+            /** @description the page returned (a page beyond the end answers the last page) */
+            page: number;
+            page_size: number;
+            /** @enum {string} */
+            sort: "created_at" | "status" | "duration" | "trigger";
+            /** @enum {string} */
+            order: "asc" | "desc";
             counts: {
                 succeeded?: number;
                 failed?: number;
@@ -512,6 +531,8 @@ export interface components {
         id: string;
         page: number;
         pageSize: number;
+        /** @description sort direction; defaults to the chosen field's default direction */
+        order: "asc" | "desc";
     };
     requestBodies: never;
     headers: never;
@@ -618,6 +639,10 @@ export interface operations {
             query?: {
                 page?: components["parameters"]["page"];
                 page_size?: components["parameters"]["pageSize"];
+                /** @description default name (asc) */
+                sort?: "name" | "type" | "state" | "next_run_at" | "updated_at";
+                /** @description sort direction; defaults to the chosen field's default direction */
+                order?: components["parameters"]["order"];
                 kind?: components["schemas"]["Kind"];
                 state?: components["schemas"]["TaskState"];
                 validity?: components["schemas"]["Validity"];
@@ -909,6 +934,10 @@ export interface operations {
             query?: {
                 page?: components["parameters"]["page"];
                 page_size?: components["parameters"]["pageSize"];
+                /** @description default created_at (desc) */
+                sort?: "created_at" | "status" | "duration" | "trigger";
+                /** @description sort direction; defaults to the chosen field's default direction */
+                order?: components["parameters"]["order"];
                 task_id?: string;
                 status?: components["schemas"]["ExecutionStatus"][];
                 failed_only?: boolean;
@@ -922,7 +951,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description page of attempts (newest first) */
+            /** @description page of attempts (newest first by default) */
             200: {
                 headers: {
                     [name: string]: unknown;

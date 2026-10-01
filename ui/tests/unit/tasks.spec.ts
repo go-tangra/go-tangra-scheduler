@@ -94,18 +94,36 @@ describe('task form schema and request bodies', () => {
 
 describe('tasks store', () => {
   it('lists with filter and paging params, skipping blanks', async () => {
-    const calls = fetchMock(() => ({ body: { items: [task()], total: 30 } }))
+    const calls = fetchMock(() => ({ body: { items: [task()], total: 30, page: 2, page_size: 25, sort: 'state', order: 'desc' } }))
     const s = useTasks()
-    await s.list({ q: 'mail', kind: 'periodic', state: undefined, type: 'notify:send-mail', validity: 'payload_invalid' }, 2)
-    expect(calls[0]!.url).toBe('/api/scheduler/v1/tasks?q=mail&kind=periodic&type=notify%3Asend-mail&validity=payload_invalid&page=2&page_size=25')
+    const res = await s.list({ q: 'mail', kind: 'periodic', state: undefined, type: 'notify:send-mail', validity: 'payload_invalid' }, { page: 2, page_size: 25, sort: 'state', order: 'desc' })
+    expect(calls[0]!.url).toBe('/api/scheduler/v1/tasks?q=mail&kind=periodic&type=notify%3Asend-mail&validity=payload_invalid&page=2&page_size=25&sort=state&order=desc')
     expect(s.items.length).toBe(1)
     expect(s.total).toBe(30)
-    expect(s.page).toBe(2)
+    expect(res?.page).toBe(2)
+    expect(s.params).toEqual({ page: 2, page_size: 25, sort: 'state', order: 'desc' })
+    // a reload keeps the page, size and order
     await s.reload()
     expect(calls[1]!.url).toBe(calls[0]!.url)
     fetchMock(() => ({ status: 403, body: { reason: 'forbidden' } }))
     await s.list({})
     expect(s.error).toBe('You are not allowed to do that.')
+  })
+
+  it('ignores a response superseded by a newer request (rapid paging / sorting)', async () => {
+    const resolvers: ((r: Response) => void)[] = []
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((r) => resolvers.push(r))))
+    const reply = (name: string) => new Response(JSON.stringify({ items: [task({ name })], total: 30 }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    const s = useTasks()
+    const first = s.list({}, { page: 1, page_size: 25, sort: 'name', order: 'asc' })
+    const second = s.list({}, { page: 2, page_size: 25, sort: 'name', order: 'asc' })
+    await new Promise((r) => setTimeout(r))
+    resolvers[1]!(reply('second'))
+    expect((await second)?.items[0]!.name).toBe('second')
+    resolvers[0]!(reply('first'))
+    expect(await first).toBeNull()
+    expect(s.items[0]!.name).toBe('second')
+    expect(s.loading).toBe(false)
   })
 
   it('create posts the body with the CSRF header and returns the wait_result execution id', async () => {
@@ -173,18 +191,19 @@ describe('types, executions and overview stores', () => {
   })
 
   it('executions: repeatable status, failed_only, range and paging; counts kept', async () => {
-    expect(executionQuery({ task_id: 't1', status: ['failed', 'timed_out'], failed_only: true, trigger: 'manual', from: 'a', to: 'b' }, 2, 20)).toBe('task_id=t1&status=failed&status=timed_out&failed_only=true&trigger=manual&from=a&to=b&page=2&page_size=20')
+    expect(executionQuery({ task_id: 't1', status: ['failed', 'timed_out'], failed_only: true, trigger: 'manual', from: 'a', to: 'b' }, { page: 2, page_size: 20, sort: 'duration', order: 'asc' }))
+      .toBe('task_id=t1&status=failed&status=timed_out&failed_only=true&trigger=manual&from=a&to=b&page=2&page_size=20&sort=duration&order=asc')
     const calls = fetchMock(() => ({ body: { items: [execution()], total: 41, counts: { succeeded: 30, failed: 10, other: 1 } } }))
     const s = useExecutions()
-    await s.list({ task_id: 't1' }, 3)
-    expect(calls[0]!.url).toBe('/api/scheduler/v1/executions?task_id=t1&page=3&page_size=20')
+    await s.list({ task_id: 't1' }, { page: 3, page_size: 10, sort: 'created_at', order: 'desc' })
+    expect(calls[0]!.url).toBe('/api/scheduler/v1/executions?task_id=t1&page=3&page_size=10&sort=created_at&order=desc')
     expect(s.counts).toEqual({ succeeded: 30, failed: 10, other: 1 })
     expect(s.total).toBe(41)
     await s.reload()
     expect(calls[1]!.url).toBe(calls[0]!.url)
     await s.fetchPage({ task_id: 't1' })
-    expect(calls[2]!.url).toBe('/api/scheduler/v1/executions?task_id=t1&page=1&page_size=10')
-    expect(s.page).toBe(3)
+    expect(calls[2]!.url).toBe('/api/scheduler/v1/executions?task_id=t1&page=1&page_size=10&sort=created_at&order=desc')
+    expect(s.params.page).toBe(3)
     await s.get('e1')
     expect(calls[3]!.url).toBe('/api/scheduler/v1/executions/e1')
     s.clear()
