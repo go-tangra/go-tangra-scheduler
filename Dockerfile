@@ -44,7 +44,10 @@ LABEL org.opencontainers.image.source="https://github.com/go-tangra/go-tangra-sc
       org.opencontainers.image.version="${APP_VERSION}" \
       org.opencontainers.image.revision="${VCS_REF}"
 # tzdata: task time zones are IANA names resolved at run time (research D2/D13).
-RUN apk add --no-cache ca-certificates tzdata && adduser -D -u 10001 app
+# /state is the mesh enrolment state mount point, owned by app so a fresh
+# named volume (the join bundle's scheduler-state) is writable.
+RUN apk add --no-cache ca-certificates tzdata && adduser -D -u 10001 app \
+    && install -d -o app -g app -m 0700 /state
 COPY --from=build /out/schedulersvc /usr/local/bin/
 COPY deploy /app/deploy
 WORKDIR /app
