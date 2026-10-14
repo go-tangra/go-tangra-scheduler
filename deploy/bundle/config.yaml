@@ -1,0 +1,61 @@
+# scheduler configuration, rendered by the gateway's add-module wizard: every
+# ${...} below was filled from the core's own configuration, so the issuer,
+# trust domain and addresses match the core exactly; the event bus values are
+# the inputs given in the wizard.
+service_name: scheduler
+trust_domain: ${TRUST_DOMAIN}
+env: production
+identity:
+  provider: provided
+mesh_enroll:
+  enabled: true
+  enroll_url: ${LCM_ENROLL_URL}
+  lcm_grpc: ${LCM_GRPC}
+  tenant_id: ${MESH_TENANT_ID}
+  token_file: /tokens/enrollment.token
+  state_file: /state/svid.json
+authz: { source: file, path: /app/policy.yaml }
+server: { grpc_addr: 0.0.0.0:9905, http_addr: 0.0.0.0:9906 }
+admin: { addr: 127.0.0.1:9800 }
+# Executing modules are dialled by their logical name (the task type's
+# module). lcm is reachable at its core address; add every other executing
+# module (ipam, notification, signing, hr, asset, ...) with the address this
+# host reaches it at, or its tasks fail with "unknown service".
+discovery:
+  static:
+    gateway: ["${GATEWAY_GRPC}"]
+    auth: ["${AUTH_GRPC}"]
+    lcm: ["${LCM_GRPC}"]
+limits: { max_request_bytes: 33620992 }
+db:
+  dsn: postgres://scheduler_app:${GEN_PASSWORD_2}@scheduler-db:5432/scheduler?sslmode=verify-full&sslrootcert=/tls/ca.pem
+  migrate_dsn: postgres://postgres:${GEN_PASSWORD_1}@scheduler-db:5432/scheduler?sslmode=verify-full&sslrootcert=/tls/ca.pem
+  max_conns: 16
+# The core's event bus: live status is appended to platform:events:<tenant>,
+# which the gateway and the scheduler's own /stream fan out to browsers.
+valkey:
+  addresses: ["${VALKEY_ADDRESS}"]
+  username: scheduler
+  password: "${VALKEY_PASSWORD}"
+  ca_file: /tls/valkey-ca.pem
+events: { enabled: true }
+# Events of platform-scoped tasks go to this tenant's stream.
+platform_tenant_id: ${MESH_TENANT_ID}
+engine:
+  tick_ms: 1000
+  workers: 16
+  batch: 100
+  misfire_grace_seconds: 60
+  lease_grace_seconds: 30
+  retention_days: 90
+  retention_interval_minutes: 60
+  instance_id: ""   # "" = hostname + random suffix (one per replica)
+limits_scheduler:
+  max_payload_bytes: 65536
+  max_result_bytes: 65536
+  max_timeout_seconds: 3600
+  min_interval_seconds: 60
+  max_page_size: 200
+  max_backup_bytes: 33554432
+  max_tasks_per_tenant: 1000
+gateway: { service: gateway, issuer: ${GATEWAY_ISSUER} }

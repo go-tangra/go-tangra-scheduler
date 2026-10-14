@@ -1,0 +1,16 @@
+# Freya service-to-service policy for the scheduler (rendered for this core's
+# trust domain): deny by default; the gateway forwards browser traffic, and
+# only the modules that execute tasks may register their task types (the
+# handler also limits each caller to its own "<module>:" namespace).
+version: scheduler-join-1
+rules:
+  - id: gateway-forwards
+    from: ["spiffe://${TRUST_DOMAIN}/svc/gateway"]
+    to: ["scheduler"]
+    operations: ["*"]
+    effect: allow
+  - id: modules-register
+    from: ["spiffe://${TRUST_DOMAIN}/svc/ipam", "spiffe://${TRUST_DOMAIN}/svc/lcm", "spiffe://${TRUST_DOMAIN}/svc/notification", "spiffe://${TRUST_DOMAIN}/svc/signing", "spiffe://${TRUST_DOMAIN}/svc/hr", "spiffe://${TRUST_DOMAIN}/svc/asset"]
+    to: ["scheduler"]
+    operations: ["/scheduler.v1.Registration/RegisterTaskTypes", "/scheduler.v1.Registration/UnregisterTaskTypes"]
+    effect: allow
